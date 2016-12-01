@@ -26,7 +26,7 @@ class Walker {
 
 sub MAIN($input) {
     my Walker $walker .= new;
-    my %seen = ( "(0, 0)" => 1 );# Just in case we return home first!
+    my %seen = ( $walker.pos => 1 );# Just in case we return home first!
     for slurp($input).comb(/ (<[LR]>) (\d+) /, :match)».Slip -> [$dir, $step] {
         $walker.turn($dir);
         for ^$step {
