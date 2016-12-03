@@ -11,8 +11,8 @@ multi MAIN('rows') {
 }
 
 multi MAIN('golf') {
-    say "rows: ", [+] "03.in".IO.lines.map: { my @n = .comb(/\d+/)».Int.sort; @n[0] + @n[1] > @n[2] };
-    say "cols: ", [+] flat([Z] "03.in".IO.lines».comb(/\d+/)».Int).rotor(3)».sort.map: { .[0] + .[1] > .[2] };
+    say "rows: ", [+] "03.in".IO.lines.map:{my \n=.comb(/\d+/)».Int.sort;n[0]+n[1]>n[2]};
+    say "cols: ", [+] flat([Z] "03.in".IO.lines».comb(/\d+/)».Int).rotor(3)».sort.map:{.[0]+.[1]>.[2]};
 }
 
 multi MAIN('cols') {
