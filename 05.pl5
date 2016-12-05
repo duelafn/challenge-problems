@@ -1,0 +1,36 @@
+#!/usr/bin/env perl
+use 5.014;
+use Digest::MD5 qw(md5_hex);
+
+my $code = shift // "uqwqemis";
+step1();
+step2();
+
+sub step1 {
+    my $passwd = '';
+    my $idx = -1;
+    while (length($passwd) < 8) {
+        $idx++;
+        my $hash = md5_hex($code . $idx);
+        # say $idx if 0 == $idx % 100;
+        next unless $hash =~ /^00000/;
+        $passwd .= substr($hash, 5, 1);
+        say $passwd;
+    }
+}
+
+sub step2 {
+    my $hits = 0;
+    my @passwd = (undef) x 8;
+    my $idx = -1;
+    while ($hits < 8) {
+        $idx++;
+        my $hash = md5_hex($code . $idx);
+        # say $idx if 0 == $idx % 100;
+        next unless $hash =~ /^00000([0-7])(.)/;
+        next if defined($passwd[$1]);
+        $passwd[$1] = $2;
+        $hits++;
+        say join "", map $_//"_", @passwd;
+    }
+}
