@@ -86,8 +86,9 @@ sub MAIN($file="10.in") {
             put "Bot $bot.number() is processing chips 17 and 61";
         }
         $bot.give-chips;
-        $channel.send($bot.low-target)  if 2 == $bot.low-target.num-chips  and $bot.low-target  !~~ Output;
-        $channel.send($bot.high-target) if 2 == $bot.high-target.num-chips and $bot.high-target !~~ Output;
+        for $bot.low-target, $bot.high-target -> $target {
+            $channel.send($target) if 2 == $target.num-chips and $target !~~ Output;
+        }
     }
     say "{ .number }: { .chips }" for $factory.outputs.sort: { $^a.number <=> $^b.number };
     say [*] (^3).map: { $factory.bot(~$^i, "output").chips.pick };
