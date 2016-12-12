@@ -1,0 +1,39 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+
+sub cat {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    chomp(my @lines = <$F>);
+    return @lines;
+}
+
+sub compile {
+    my @code;
+    push @code, sprintf('my $%s = 0;', $_) for 'a'..'d';
+    my $line = 0;
+    my $addline = sub {
+        push @code, "LINE$line: @_;";
+    };
+
+    for (@_) {
+        $line++;
+        if    (/cpy (-?\d+) ([a-z])/)  { $addline->(sprintf('$%s = %d', $2, $1)) }
+        elsif (/jnz ([a-z]) (-?\d+)/)  { $addline->(sprintf('goto LINE%s if $%s != 0', $line + $2, $1)) }
+        elsif (/dec ([a-z])/)          { $addline->(sprintf('$%s--', $1)) }
+        elsif (/inc ([a-z])/)          { $addline->(sprintf('$%s++', $1)) }
+        elsif (/cpy ([a-z]) ([a-z])/)  { $addline->(sprintf('$%s = $%s', $2, $1)) }
+        elsif (/jnz (-?\d+) (-?\d+)/)  { $addline->(sprintf('goto LINE%s if %d != 0', $line + $2, $1)) }
+        else { die "Not implemented"; }
+    }
+
+    push @code, sprintf('say "[$a $b $c $d]";');
+    return join "\n", @code;
+}
+
+sub MAIN {
+    my $file = shift // "12.in";
+    die $@ unless eval compile("cpy 1 c", cat($file));
+}
+
+MAIN(@ARGV);
