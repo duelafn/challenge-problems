@@ -1,0 +1,123 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+use Storable qw/ dclone /;
+## Re-implementation in perl5 since perl6 is so slow.
+
+use constant verbose => 0;
+
+my $empty = {};
+my %ORDINAL = (first => 1, second => 2, third => 3, fourth => 4);
+
+func place($state, $floor, $obj) {
+    $$state{$floor}{$$obj{what}}{$$obj{type}} = 1;
+}
+
+func gist($state) {
+    return "STEP $$state{step}\n" . uid($state);
+}
+
+func uid($state) {
+    my @rv;
+    for my $floor ($$state{min_floor}..$$state{max_floor}) {
+        my @line = $floor;
+        push @line, $$state{elevator} == $floor ? "*" : ":";
+        for my $what (sort keys %{$$state{$floor} // $empty}) {
+            for my $type (sort keys %{$$state{$floor}{$what} // $empty}) {
+                push @line, "$type $what";
+            }
+        }
+        push @rv, join " ", @line;
+    }
+    join "\n", @rv;
+}
+
+func cat($f) {
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    chomp(my @lines = <$F>);
+    return @lines;
+}
+
+func load_state($file) {
+    my $state = { min_floor => 1, max_floor => 4, elevator => 1, step => 0 };
+    for (cat($file)) {
+        die unless /The (\w+) floor/;
+        my $floor = $ORDINAL{$1};
+        while (/ an? (?<type>.*?)(?:\-compatible (?<what>microchip)| (?<what>generator))/gc) {
+            my $obj = { type => $+{type}, what => $+{what} };
+            place($state, $floor, $obj);
+        }
+    }
+    return $state;
+}
+
+func wanted($state) {
+    for my $floor ($$state{min_floor}..($$state{max_floor}-1)) {
+        for (values %{$$state{$floor} // $empty}) {
+            for (values %{$_ // $empty}) {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+func is_safe($state) {
+    for my $floor ($$state{min_floor}..$$state{max_floor}) {
+        next unless %{$$state{$floor}{generator} // $empty} and %{$$state{$floor}{microchip} // $empty};
+        for my $type (keys %{$$state{$floor}{microchip}}) {
+            return 0 unless exists($$state{$floor}{generator}{$type});
+        }
+    }
+    return 1;
+}
+
+func move($state, $delta, @items) {
+    my $new  = dclone($state);
+    my $from = $$state{elevator};
+    my $to   = $$state{elevator} + $delta;
+    $$new{elevator} = $to;
+    $$new{step}++;
+    for (@items) {
+        delete($$new{$from}{$$_[0]}{$$_[1]});
+        $$new{$to}{$$_[0]}{$$_[1]} = 1;
+    }
+    return $new;
+}
+
+func all_moves($state) {
+    my @moves;
+    my @here;
+    my $floor = $$state{elevator};
+    push @here, map +[generator => $_], keys %{$$state{$floor}{generator} // $empty};
+    push @here, map +[microchip => $_], keys %{$$state{$floor}{microchip} // $empty};
+    for my $i (0..$#here) {
+        push @moves, move($state, +1, $here[$i]) if $floor < $$state{max_floor};
+        push @moves, move($state, -1, $here[$i]) if $floor > $$state{min_floor};
+        for my $j (($i+1)..$#here) {
+            push @moves, move($state, +1, $here[$i], $here[$j]) if $floor < $$state{max_floor};
+            push @moves, move($state, -1, $here[$i], $here[$j]) if $floor > $$state{min_floor};
+        }
+    }
+    return @moves;
+}
+
+func safe_moves($state) {
+    grep is_safe($_), all_moves($state);
+}
+
+func MAIN {
+    my @todo = (load_state(shift // "11.in"));
+    my %seen = (uid($todo[0]) => 1);
+    while (1) {
+        my $state = shift @todo;
+        say gist($state) if verbose;
+        if (wanted($state)) {
+            say gist($state) unless verbose;
+            exit;
+        }
+        push @todo, grep !($seen{uid($_)}++), safe_moves($state);
+    }
+}
+
+MAIN(@ARGV);
