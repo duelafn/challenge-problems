@@ -1,5 +1,6 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl -ws
 use strict; use warnings; use 5.014;
+use Time::HiRes qw/ time /;
 
 sub cat {
     my $f = shift;
@@ -9,11 +10,11 @@ sub cat {
 }
 
 sub compile {
-    my @code;
+    my @code = 'my $steps = 0; my $start = time;';
     push @code, sprintf('my $%s = 0;', $_) for 'a'..'d';
     my $line = 0;
     my $addline = sub {
-        push @code, "LINE$line: @_;";
+        push @code, "LINE$line: \$steps++; @_;";
     };
 
     for (@_) {
@@ -27,13 +28,21 @@ sub compile {
         else { die "Not implemented"; }
     }
 
-    push @code, sprintf('say "[$a $b $c $d]";');
+    push @code, 'say "[$a $b $c $d]";';
+    push @code, 'my $t = time; say sprintf("%d steps in %d seconds (%d ips)", $steps, $t - $start, $steps / ($t - $start));';
     return join "\n", @code;
 }
 
+#   954509 steps in 0 seconds (12105994 ips)
+# 27683521 steps in 2 seconds (11664883 ips)
 sub MAIN {
     my $file = shift // "12.in";
-    die $@ unless eval compile("cpy 1 c", cat($file));
+    my @lines = cat($file);
+    {
+        no strict;
+        unshift @lines, $prepend if $prepend;
+    }
+    die $@ unless eval compile(@lines);
 }
 
 MAIN(@ARGV);
