@@ -1,8 +1,6 @@
 #!/usr/bin/env perl6
 use v6.c;
 
-# TODO: Ideally, we'd build QAST from a grammar, but with no concrete API
-#       don't really want to do that.
 class VM {
     has Int %.reg;
     has @.code;
@@ -25,34 +23,34 @@ class VM {
 
     method compile(@registers, @lines) {
         %!reg{~$_} = 0 for @registers;
-        for @lines {
+        @!code.append: gather for @lines {
             when m:s/ cpy <value=integer> <to=register> / {
                 my $value = +$<value>;
                 my $reg := %!reg{~$<to>};
-                @!code.push: { $reg = $value; $!line++ }
+                take { $reg = $value; $!line++ }
             }
             when m:s/ cpy <from=register> <to=register> / {
                 my $src := %!reg{~$<from>};
                 my $tgt := %!reg{~$<to>};
-                @!code.push: { $tgt = $src; $!line++ }
+                take { $tgt = $src; $!line++ }
             }
             when m:s/ inc <register> / {
                 my $reg := %!reg{~$<register>};
-                @!code.push: { $reg++; $!line++ }
+                take { $reg++; $!line++ }
             }
             when m:s/ dec <register> / {
                 my $reg := %!reg{~$<register>};
-                @!code.push: { $reg--; $!line++ }
+                take { $reg--; $!line++ }
             }
             when m:s/ jnz <test=integer> <goto=integer> / {
                 my $step = $<goto>;
                 my $test = +$<test>;
-                @!code.push: { $!line += (0 == $test ?? 1 !! $step) };# NOTE: Don't optimize this away, else breaks jumps across it
+                take { $!line += (0 == $test ?? 1 !! $step) };# NOTE: Don't optimize this away, else breaks jumps across it
             }
             when m:s/ jnz <test=register> <goto=integer> / {
                 my $step = $<goto>;
                 my $reg := %!reg{~$<test>};
-                @!code.push: { $!line += (0 == $reg ?? 1 !! $step) }
+                take { $!line += (0 == $reg ?? 1 !! $step) }
             }
             default { die "Not implemented" }
         }
@@ -72,6 +70,7 @@ class VM {
     method halted() { $!line > @.code.end }
     method dump()   { say %!reg }
 }
+
 
 #   954509 steps in   7 seconds (120730 ips)
 # 27683521 steps in 227 seconds (121619 ips)
