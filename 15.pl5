@@ -1,0 +1,26 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+# Plain brute-force
+
+my @items = (
+    [13, 1],
+    [19, 10],
+    [3,  2],
+    [7,  1],
+    [5,  3],
+    [17, 5],
+    [11, 0],
+);
+
+my $t = -1;
+my $N = @items;
+
+TIME:
+while (1) {
+    $t++;
+    for (0..$#items) {
+        redo TIME if ($items[$_][1] + $t + $_ + 1) % $items[$_][0];
+    }
+    last
+}
+say $t;
