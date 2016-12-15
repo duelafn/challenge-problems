@@ -1,0 +1,30 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Digest::MD5 qw(md5_hex);
+
+my $salt = shift // "zpqevtbw";
+my $index = 0;
+
+# *hash = \&plain;# 16106
+*hash = \&stretch;# 22423
+
+my @q = map hash(), 0..999;
+my @keep;
+
+while (1) {
+    my $hash = shift @q;
+    push @q, hash();
+    next unless $hash =~ /(.)\1\1/;
+    push @keep, $hash if index("@q", ("$1" x 5)) >= 0;
+    last if @keep >= 64;
+}
+say $index - 1001;
+
+
+sub plain   { md5_hex($salt . ($index++)) }
+sub stretch {
+    local $_ = $salt . ($index++);
+    my $i = 0;
+    $_ = md5_hex($_) while $i++ <= 2016;
+    return $_;
+}
