@@ -1,0 +1,46 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+
+package Walker {
+    use Digest::MD5 qw(md5_hex);
+    use Method::Signatures::Simple;
+    our $ROWS = 4;
+    our $COLS = 4;
+    our $SALT;
+    func new { return bless { path => "", x => 1, y => 1 }, shift }
+    method len { length($$self{path}) }
+    method valid {
+        my ($a, $b, $c, $d) = split //, md5_hex($SALT . $$self{path});
+        my @x;
+        push @x, "U" if $a =~ /[b-f]/ and $$self{y} > 1;
+        push @x, "D" if $b =~ /[b-f]/ and $$self{y} < $ROWS;
+        push @x, "L" if $c =~ /[b-f]/ and $$self{x} > 1;
+        push @x, "R" if $d =~ /[b-f]/ and $$self{x} < $COLS;
+        return @x;
+    }
+    method step($d) {
+        my $new = bless { %$self }, "Walker";
+        $$new{path} .= "$d";
+        if    ($d eq 'U') { $$new{y}-- }
+        elsif ($d eq 'D') { $$new{y}++ }
+        elsif ($d eq 'L') { $$new{x}-- }
+        elsif ($d eq 'R') { $$new{x}++ }
+        return $new;
+    }
+}
+
+$Walker::SALT = shift // "bwnlcvfs";
+
+my @todo = (Walker->new);
+my $path;
+while (@todo) {
+    my $w = shift @todo;
+    if ($$w{x} == 4 && $$w{y} == 4) {
+        say "First: $$w{path}" unless $path;
+        $path = $w;
+    }
+    else {
+        push @todo, map $w->step($_), $w->valid;
+    }
+}
+say length($$path{path}||'') || "Bummer";
