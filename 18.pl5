@@ -1,0 +1,32 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+
+sub build_next {
+    state $trap = { map +($_,1), '^^.', '.^^', '^..', '..^' };
+    my $row = shift;
+    my $next = '.';
+    $next .= $$trap{substr($row, $_-1, 3)} ? "^" : "." for 1..(length($row)-2);
+    return "$next.";
+}
+
+sub MAIN {
+    my $n = shift // 40;
+    my $file = shift // "18.in";
+    chomp(my $first = (-e $file ? cat($file) : $file));
+    my @floor = (".$first.");
+    push @floor, build_next($floor[-1]) while @floor < $n;
+    my $num_safe = -2 * @floor;
+    $num_safe += tr/././ for @floor;
+#     say for @floor;
+    say $num_safe;
+}
+
+
+sub cat {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    local $/ = undef;
+    return scalar <$F>;
+}
+
+MAIN(@ARGV);
