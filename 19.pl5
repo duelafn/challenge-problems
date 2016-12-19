@@ -1,0 +1,76 @@
+#!/usr/bin/perl -ws
+use strict; use warnings; use 5.014;
+our $v;
+
+sub MAIN0 {
+    my $count = shift // 5;
+    my @e = 1..$count;
+
+    my $i = 0;
+    while (@e > 1) {
+        say join ",", @e if $v;
+        $i++;
+        $i = 0 if $i > $#e;
+        splice @e, $i, 1;
+        $i = 0 if $i > $#e;
+    }
+    return "@e";
+}
+
+sub MAIN1b {
+    my $count = shift // 5;
+    say join ",", 1..$count if $v;
+    my @e = map 2*$_+1, 0..($count/2);# Just kill all evens straight-out
+
+    my $i;
+    if ($count % 2) {
+        $i = $#e;
+    } else {
+        pop @e;
+        $i = 0;
+    }
+
+    while (@e > 1) {
+        say join ",", @e if $v;
+        $i++;
+        $i = 0 if $i > $#e;
+        splice @e, $i, 1;
+        $i = 0 if $i > $#e;
+    }
+    return "@e";
+}
+
+sub MAIN1 {
+    my $count = shift // 5;
+    say join ",", 1..$count if $v;
+    my @e = map 2*$_+1, 0..($count/2);# Just kill all evens straight-out
+    pop @e unless $count % 2;
+
+    my $i = $count % 2;
+    while (@e > 1) {
+        say join ",", @e if $v;
+        my $next = ($i + @e) % 2;
+        my $end = int(@e/2);
+        $end-- if 2*$end + $i > $#e;
+        @e = @e[map 2*$_ + $i, 0..$end];
+        $i = $next;
+    }
+    return "@e";
+}
+
+sub MAIN2 {
+    my $count = shift // 5;
+    my @e = 1..$count;
+
+    my $i = 0;
+    while (@e > 1) {
+        say join ",", @e if $v;
+        my $kill = ($i + int(@e/2)) % @e;
+        splice @e, $kill, 1;
+        $i++ unless $kill < $i;
+        $i = 0 if $i > $#e;
+    }
+    return "@e";
+}
+
+say MAIN2(@ARGV);
