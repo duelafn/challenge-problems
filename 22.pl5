@@ -1,0 +1,158 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+use Carp;
+
+package Node {
+    use Method::Signatures::Simple;
+    use Carp;
+    method new {
+        my $rv = bless { @_ }, $self;
+        $$rv{id} = "($$rv{x},$$rv{y})";
+        return $rv;
+    }
+
+    method clone() { bless { %$self }, ref($self) }
+
+    method clear_ids() { $$self{id} = "" }
+    method gist() { "\{$$self{x},$$self{x}\} $$self{id}" }
+    method changed() { $$self{id} ne "($$self{x},$$self{y})" }
+
+    method add_ids($ids) {
+        my @ids = split(/\s+/, "$$self{id} $ids");
+        $$self{id} = join " ", grep /\S/, sort @ids;
+    }
+}
+
+package Cluster {
+    use Method::Signatures::Simple;
+    use Carp;
+    method new { bless { rows => 0, cols => 0, @_ }, $self }
+
+    method clone() {
+        my $clone = bless { %$self }, ref($self);
+        $$clone{moves} = [ @{$$clone{moves} || []} ];
+        $$clone{node_array} = [];
+        for my $y (0..($$clone{rows}-1)) {
+            for my $x (0..($$clone{cols}-1)) {
+                $$clone{node_array}[$y][$x] = $$self{node_array}[$y][$x]->clone;
+            }
+        }
+        return $clone;
+    }
+
+    method id() { join ";", map { $_->gist } grep { $_->changed } $self->nodes }
+    method at {
+        if (1 == @_) {
+            my $node = shift;
+            return $$self{node_array}[$$node{y}][$$node{x}];
+        } else {
+            my ($x, $y) = @_;
+            return $$self{node_array}[$y][$x];
+        }
+    }
+
+    method add($node) {
+        $$self{rows} = $$node{y} + 1 if $$node{y} >= $$self{rows};
+        $$self{cols} = $$node{x} + 1 if $$node{x} >= $$self{cols};
+        $$self{node_array}[$$node{y}][$$node{x}] = $node;
+        return $self;
+    }
+
+    method clone_move($a, $b) {
+        my $clone = $self->clone;
+        $clone->move($clone->at($a), $clone->at($b));
+        return $clone;
+    }
+
+    method move($a, $b) {
+        push @{$$self{moves}}, "($$a{x},$$a{y}) -> ($$b{x},$$b{y})";
+        $$b{used} += $$a{used};
+        $$b{avail} = $$b{size} - $$b{used};
+        $b->add_ids($$a{id});
+        $$a{used} = 0;
+        $$a{avail} = $$a{size};
+        $a->clear_ids();
+        return $self;
+    }
+
+    method nodes() { grep defined($_), map { @$_ } @{$$self{node_array}} }
+
+    method viable_pairs() {
+        my @nodes = $self->nodes;
+        my @viable;
+        for my $a (0..($#nodes-1)) {
+            for my $b (($a+1)..($#nodes-1)) {
+                push @viable, [$a, $b] if $$a{used} > 0 and $$a{used} <= $$b{avail};
+                push @viable, [$b, $a] if $$b{used} > 0 and $$b{used} <= $$a{avail};
+            }
+        }
+        return @viable;
+    }
+
+    method viable_moves($x, $y) {
+        # accept Node or position
+        ($x, $y) = ($$x{x}, $$x{y}) if 1 == @_;
+        my $node = $self->at($x, $y);
+        return unless $$node{used} > 0;
+        map [$node, $_], grep { $$node{used} <= $$_{avail} } $self->neighbors($x, $y);
+    }
+
+    method neighbors($x, $y) {
+        # accept Node or position
+        ($x, $y) = ($$x{x}, $$x{y}) if 1 == @_;
+        my @rv;
+        push @rv, $$self{node_array}[$y-1][$x] if $y > 0 and $$self{node_array}[$y-1][$x];
+        push @rv, $$self{node_array}[$y+1][$x] if $$self{node_array}[$y+1][$x];
+        push @rv, $$self{node_array}[$y][$x-1] if $x > 0 and $$self{node_array}[$y][$x-1];
+        push @rv, $$self{node_array}[$y][$x+1] if $$self{node_array}[$y][$x+1];
+        return @rv;
+    }
+}
+
+func load($file) {
+    my $cluster = Cluster->new;
+    for (cat($file)) {
+        if (/^#/) { 1; }
+        elsif (/node\-x(?<x>\d+)\-y(?<y>\d+) \s+ (?<size>\d+)T \s+ (?<used>\d+)T \s+ (?<avail>\d+)T /x) {
+            $cluster->add(Node->new(%+));
+        }
+        else { die "Can't parse $_" }
+    }
+    return $cluster;
+}
+
+
+sub MAIN {
+    my $file = shift // "22.in";
+    my $wanted = "(32,0)";
+
+    my @todo = (load($file));
+    my %seen = ($todo[0]->id => 1);
+    while (@todo) {
+        my $cluster = shift @todo;
+        if (index($cluster->at(0,0)->{id}, $wanted) >= 0) {
+            my @moves = $cluster->moves;
+            say for @moves;
+            say "Finish in $#moves moves";
+            exit;
+        }
+
+        for my $node ($cluster->nodes) {
+            for ($cluster->viable_moves($node)) {
+                push @todo, grep !$seen{$_->id}++, $cluster->clone_move(@$_);
+            }
+        }
+        say "TODO: ", $#todo+1;
+    }
+}
+
+
+sub cat {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    chomp(my @lines = <$F>);
+    return @lines;
+}
+
+MAIN(@ARGV);
