@@ -1,0 +1,95 @@
+#!/usr/bin/perl -ws
+use strict; use warnings; use 5.014;
+use Time::HiRes qw/ time /;
+
+our @LINES;
+our @SUBS;
+our $lineno = 0;
+our $steps = 0;
+our $start = time;
+use vars qw/ $a $b $c $d /;
+$a //= 0; $b //= 0; $c //= 0; $d //= 0;
+
+#        63,397 steps in   0 seconds (3,967,507 ips)   ; ./23.pl5 -a=7
+# 3,501,380,372 steps in 875 seconds (3,997,646 ips)   ; ./23.pl5 -a=12
+sub MAIN {
+    my $file = shift // "23.in";
+    my @lines = cat($file);
+    run(@lines);
+}
+
+sub toggle {
+    my $line = shift;
+    local $_ = $LINES[$line];
+    return unless $_;
+    if    (s/inc/dec/)     { compile_line($line, $_, 1); }
+    elsif (s/dec|tgl/inc/) { compile_line($line, $_, 1); }
+    elsif (s/jnz/cpy/)     { compile_line($line, $_, 1); }
+    elsif (s/cpy/jnz/)     { compile_line($line, $_, 1); }
+    else                   { die "Not implemented" }
+}
+
+sub compile_line {
+    state $cache = {};
+    my ($line, $cmd, $else) = @_;
+    $LINES[$line] = $cmd;
+
+    unless ($$cache{$cmd}) {
+        my $code;
+        for ($cmd) {
+            if    (/cpy (-?\d+) ([a-z])/)  { $code = sprintf('$%s = %d',  $2, $1) }
+            elsif (/cpy ([a-z]) ([a-z])/)  { $code = sprintf('$%s = $%s', $2, $1) }
+
+            elsif (/jnz ([a-z]) (-?\d+)/)  { $code = sprintf('return $lineno +=  %d if $%s != 0', $2, $1) }
+            elsif (/jnz ([a-z]) ([a-z])/)  { $code = sprintf('return $lineno += $%s if $%s != 0', $2, $1) }
+            elsif (/jnz (-?\d+) (-?\d+)/)  { $code = sprintf('return $lineno +=  %d if  %d != 0', $2, $1) }
+            elsif (/jnz (-?\d+) ([a-z])/)  { $code = sprintf('return $lineno += $%s if  %d != 0', $2, $1) }
+
+            elsif (/dec ([a-z])/)          { $code = sprintf('$%s--', $1) }
+            elsif (/inc ([a-z])/)          { $code = sprintf('$%s++', $1) }
+
+            elsif (/tgl ([a-z])/)          { $code = sprintf('toggle(%d + $%s)', $line, $1) }
+            else {
+                if ($else) {
+                    $code = $else;
+                } else {
+                    die "Not implemented";
+                }
+            }
+        }
+        $$cache{$cmd} = eval sprintf 'sub { $steps++; %s; $lineno++; }', $code;
+    }
+
+    $SUBS[$line] = $$cache{$cmd};
+}
+
+sub run {
+    my $line = 0;
+    compile_line(++$line, $_) for @_;
+    $start = time;
+    $lineno = 1;
+    while ($SUBS[$lineno]) {
+        say commify($steps) if 0 == $steps % 1_000_000;
+        $SUBS[$lineno]->();
+    }
+    say "[$a $b $c $d]";
+    my $t = time;
+    printf "%s steps in %d seconds (%s ips)\n", commify($steps), $t - $start, commify(int($steps / ($t - $start)));
+}
+
+
+sub commify {
+    local $_ = reverse( (@_ > 1) ? sprintf(@_) : pop );
+    /\./g; /(?=\d)/g;# sets pos()
+    s/\G(\d{3})(?=\d)/$1,/g;
+    return scalar reverse $_;
+}
+
+sub cat {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    chomp(my @lines = <$F>);
+    return @lines;
+}
+
+MAIN(@ARGV);
