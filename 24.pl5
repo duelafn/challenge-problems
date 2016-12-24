@@ -1,0 +1,90 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+use Data::Dump 'pp';
+
+our @MAP;
+
+use constant {
+    PATH => 0,
+    X => 1,
+    Y => 2,
+    SEEN => 3,
+    RETURN => 4,
+};
+
+
+func is_wall($x, $y) {
+    "#" eq substr($MAP[$y], $x, 1);
+}
+
+func at($x, $y) {
+    substr($MAP[$y], $x, 1);
+}
+
+func home() {
+    for my $y (0..$#MAP) {
+        my $x = index($MAP[$y], "0");
+        return ($x, $y) if $x >= 0;
+    }
+}
+
+func wanted {
+    my @wanted;
+    for (@MAP) {
+        push @wanted, /(\d)/g;
+    }
+    return @wanted;
+}
+
+func id($state)   { join " ", $$state[X], $$state[Y], sort keys %{$$state[SEEN]} }
+func nums($state) { @$state[3..$#{$state}] }
+func see($set, $x, $y) {
+    $$set{substr($MAP[$y], $x, 1)} = 1;
+    return $set;
+}
+
+func moves($state) {
+    my @moves;
+    push @moves, [ $$state[PATH]."u", $$state[X], $$state[Y]-1, see({ %{$$state[SEEN]} }, $$state[X], $$state[Y]-1), $$state[RETURN] ] if !is_wall($$state[X], $$state[Y]-1);
+    push @moves, [ $$state[PATH]."d", $$state[X], $$state[Y]+1, see({ %{$$state[SEEN]} }, $$state[X], $$state[Y]+1), $$state[RETURN] ] if !is_wall($$state[X], $$state[Y]+1);
+    push @moves, [ $$state[PATH]."l", $$state[X]-1, $$state[Y], see({ %{$$state[SEEN]} }, $$state[X]-1, $$state[Y]), $$state[RETURN] ] if !is_wall($$state[X]-1, $$state[Y]);
+    push @moves, [ $$state[PATH]."r", $$state[X]+1, $$state[Y], see({ %{$$state[SEEN]} }, $$state[X]+1, $$state[Y]), $$state[RETURN] ] if !is_wall($$state[X]+1, $$state[Y]);
+    return @moves;
+}
+
+sub MAIN {
+    my $file = shift // "24.in";
+    @MAP = cat($file);
+    my ($x, $y) = home();
+    my $wanted = @{[ ".", wanted() ]};
+    say "Starting at ($x,$y), searching for $wanted items: ", join " ", sort(wanted());
+
+    my @todo = ( ["", $x, $y, {0=>1}, 0] );
+    my %seen = ( id($todo[0]) => 1 );
+    while (@todo) {
+        my $state = shift @todo;
+        if ($$state[RETURN] or $wanted == (0+keys(%{$$state[SEEN]}))) {
+            if (!$$state[RETURN]) {
+                $$state[RETURN] = 1;
+                say pp $state;
+                say "Found everything in ", length($$state[PATH]), " moves";
+            }
+            if ("0" eq substr($MAP[$$state[Y]], $$state[X], 1)) {
+                say pp $state;
+                say "Returned home after ", length($$state[PATH]), " moves";
+            }
+        }
+        push @todo, grep !($seen{id($_)}++), moves($state);
+    }
+}
+
+
+sub cat {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    chomp(my @lines = <$F>);
+    return @lines;
+}
+
+MAIN(@ARGV);
