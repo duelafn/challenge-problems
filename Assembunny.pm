@@ -24,8 +24,8 @@ class Assembunny {
             when m:s/ out <value=integer> /                 { take ("out", +$<value>); }
             when m:s/ out <value=register> /                { take ("out", ~$<value>); }
 
-            when m:s/ tgl <value=integer> /                 { take ("out", +$<value>); }
-            when m:s/ tgl <value=register> /                { take ("out", ~$<value>); }
+            when m:s/ tgl <value=integer> /                 { take ("tgl", +$<value>); }
+            when m:s/ tgl <value=register> /                { take ("tgl", ~$<value>); }
 
             default { die "Not implemented" }
         }
