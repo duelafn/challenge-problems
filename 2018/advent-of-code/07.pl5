@@ -1,0 +1,76 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+
+use List::Util qw/ max min /;
+
+sub ready {
+    my ($t, $task, $todo, $tmp) = @_;
+    my @rv;
+    for my $i (0..$#{$tmp}) {
+        unless (grep $t < ($$task{$_} // $t+1), @{$$todo{$$tmp[$i]}}) {
+            push @rv, [$i, $$tmp[$i]];
+        }
+    }
+    return @rv;
+}
+
+sub next_poi {
+    my ($t, $task, $worker) = @_;
+    return min(grep $_ > $t, @$worker, values %$task);
+}
+
+sub MAIN {
+    my $file = shift // "07.in";
+    my %todo;
+    for (cat($file)) {
+        # Step B must be finished before step E can begin.
+        die unless /Step (\w+) must be finished before step (\w+) can begin/;
+        $todo{$1} //= [];
+        push @{$todo{$2}}, $1;
+    }
+
+    my @done;
+    my %tmp = map +($_ => [@{$todo{$_}}]), keys %todo;
+    while (%tmp) {
+        # use Data::Dump 'pp'; pp \%tmp;
+        my ($ready) = sort grep !@{$tmp{$_}}, keys %tmp;
+        push @done, $ready;
+        delete $tmp{$ready};
+        @$_ = grep $_ ne $ready, @$_ for values %tmp;
+    }
+    say "Order: ", join "", @done;
+
+    my ($add, $N) = (60, 4);
+    ($add, $N) = (0, 2) if $file =~ /test/;
+
+    my (%task);
+    my @worker = (0)x$N;
+    my @tmp = @done;
+    my $poi = 0;
+    while (@tmp) {
+        my @ready = ready($poi, \%task, \%todo, \@tmp);
+        my ($elf) = grep $worker[$_] <= $poi, 0..($N-1);
+        if (@ready and defined($elf)) {
+            my $ready = splice @tmp, $ready[0][0], 1;
+            # use Data::Dump 'pp'; pp { start => $start, worker => \@worker, deps => [map $task{$_}, @{$todo{$ready}}] };
+            my $finish = $poi + $add + (ord($ready) - 64);
+            # say "$ready => $start..$finish";
+            $task{$ready} = $worker[$elf] = $finish;
+        }
+        else { $poi = next_poi($poi, \%task, \@worker) }
+    }
+    # use Data::Dump 'pp'; pp \%task;
+    say "Finished after ", max(@worker), " seconds";
+}
+
+
+sub cat {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    chomp(my @lines = <$F>);
+    return @lines;
+#     local $/ = undef;
+#     return scalar <$F>;
+}
+
+MAIN(@ARGV);

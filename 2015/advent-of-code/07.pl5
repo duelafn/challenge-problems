@@ -1,0 +1,98 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+use Data::Dump 'pp';
+use YAML::XS;
+
+package Wires {
+    use Method::Signatures::Simple;
+    method new { bless { data => {}, @_ }, $self }
+
+    method get($x) {
+        return $x if $x =~ /^\-?\d+$/;
+        my $data = $$self{data};
+        return ($$data{$x} = $$data{$x}->()) if 'CODE' eq ref($$data{$x});
+        return $$data{$x};
+    }
+
+    sub load {
+        my $self = shift;
+        my $data = $$self{data};
+        for (@_) {
+            die unless s/\s+\-\>\s+(\w+)\s*//;
+            my $reg = $1;
+            die if exists($$data{$reg});
+            if (/^\d+$/) {
+                $$data{$reg} = 0+$_;
+            }
+            elsif (/^(\w+)$/) {
+                my ($a) = ($1);
+                $$data{$reg} = sub { $self->get($a) };
+            }
+            elsif (/(\w+) AND (\w+)/) {
+                my ($a, $b) = ($1, $2);
+                $$data{$reg} = sub { $self->get($a) & $self->get($b) };
+            }
+            elsif (/(\w+) OR (\w+)/) {
+                my ($a, $b) = ($1, $2);
+                $$data{$reg} = sub { $self->get($a) | $self->get($b) };
+            }
+            elsif (/(\w+) LSHIFT (\w+)/) {
+                my ($a, $b) = ($1, $2);
+                $$data{$reg} = sub { $self->get($a) << $self->get($b) };
+            }
+            elsif (/(\w+) RSHIFT (\w+)/) {
+                my ($a, $b) = ($1, $2);
+                $$data{$reg} = sub { $self->get($a) >> $self->get($b) };
+            }
+            elsif (/NOT (\w+)/) {
+                my ($a) = ($1);
+                $$data{$reg} = sub { $self->get($a) ^ 65535 };
+            }
+            else {
+                die "Unknown operation $_"
+            }
+        }
+        return $self;
+    }
+
+}
+
+
+sub MAIN {
+    my $file = shift // "07.in";
+    my $wire = Wires->new->load(<DATA>);
+    say "Test:";
+    $wire->get($_) for 'd'..'i';
+    say Dump $wire->{data};
+
+    $wire = Wires->new->load(cat($file));
+    say "Part 1: ", $wire->get("a");
+    my $a = $wire->get("a");
+
+    $wire = Wires->new->load(cat($file));
+    $$wire{data}{b} = $a;
+    say "Part 2: ", $wire->get("a");
+}
+
+
+sub cat {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    chomp(my @lines = <$F>);
+    return @lines;
+}
+
+MAIN(@ARGV);
+
+
+
+__DATA__
+123 -> x
+456 -> y
+x AND y -> d
+x OR y -> e
+x LSHIFT 2 -> f
+y RSHIFT 2 -> g
+NOT x -> h
+NOT y -> i

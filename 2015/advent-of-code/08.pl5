@@ -1,0 +1,28 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+use Data::Dump 'pp';
+use YAML::XS;
+
+
+sub code_length   { length(join "", @_) }
+sub string_length { length(eval join ".", @_) }
+sub encode { map '"'.((s/\\/\\\\/gr) =~ s/"/\\"/gr).'"', @_ }
+
+sub MAIN {
+    my @lines = cat(shift // "8.in");
+
+    printf "code (%d) - string (%d) = %d\n", code_length(@lines), string_length(@lines), code_length(@lines) - string_length(@lines);
+
+    printf "encoded (%d) - code (%d) = %d\n", code_length(encode(@lines)), code_length(@lines), code_length(encode(@lines)) - code_length(@lines);
+}
+
+
+sub cat {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    chomp(my @lines = <$F>);
+    return @lines;
+}
+
+MAIN(@ARGV);

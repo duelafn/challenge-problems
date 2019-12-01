@@ -1,0 +1,99 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+use Data::Dump 'pp';
+use YAML::XS;
+use Test::More;
+use constant (
+    NAME       => 0,
+    CAPACITY   => 1,
+    DURABILITY => 2,
+    FLAVOR     => 3,
+    TEXTURE    => 4,
+    CALORIES   => 5,
+);
+
+our @ING;
+
+sub MAIN {
+    @ING = load(
+        "Butterscotch: capacity -1, durability -2, flavor 6, texture 3, calories 8",
+        "Cinnamon: capacity 2, durability 3, flavor -2, texture -1, calories 3"
+    );
+
+    is score1([44, 56]), 62842880;
+
+    my $file = shift // "15.in";
+    @ING = load(cat($file));
+
+    my @recipe = map 0, @ING;
+    $recipe[0] = 100;
+    my $best = opt_gradient(\@recipe, \&score1);
+    say "@$best: ", score1($best);
+
+}
+
+sub opt_gradient {
+    my %seen;
+    my ($init, $sub) = @_;
+    my @best = @$init;
+    my $score = $sub->(\@best);
+    $seen{"@best"}++;
+    my @todo = (\@best);
+    my $n = $#best;
+    my $loops = 0;
+    while (@todo) {
+        $loops++;
+        my $r = shift @todo;
+        my $s = $sub->($r);
+#         if ($s > $score) {
+        if ($s > $score and 500 == calories($r)) {
+            $score = $s;
+            @best = @$r;
+        }
+
+        for my $i (0..$n) {
+            for my $j (0..$n) {
+                next if $i == $j or $$r[$i] <= 0;
+                my @r = @$r;
+                $r[$i]--; $r[$j]++;
+                next if $seen{"@r"}++;
+                push @todo, \@r;
+            }
+        }
+    }
+    say "Loops: $loops";
+    return \@best;
+}
+
+sub calories {
+    my $r = shift;
+    my $v = 0;
+    $v += $$r[$_] * $ING[$_][5] for 0..$#ING;
+    return $v;
+}
+
+sub score1 {
+    my $r = shift;
+    my @v;
+    for my $i (1..4) {
+        $v[$i] += $$r[$_] * $ING[$_][$i] for 0..$#ING;
+    }
+    my $prod = 1;
+    for (1..4) { $prod *= ($v[$_] > 0) ? $v[$_] : 0 }
+    return $prod;
+}
+
+sub load {
+    state $num = '-?\d+';
+    map [ /^(\w+): capacity ($num), durability ($num), flavor ($num), texture ($num), calories ($num)/ ], @_;
+}
+
+sub cat {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    chomp(my @lines = <$F>);
+    return @lines;
+}
+
+MAIN(@ARGV);

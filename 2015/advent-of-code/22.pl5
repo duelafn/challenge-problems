@@ -1,0 +1,142 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+use Data::Dump 'pp';
+use YAML::XS;
+use Test::More;
+use Sort::Key qw/ ikeysort_inplace /;
+use Sort::Key::Maker ii_sort => qw(integer integer);
+our $PING = 0;
+
+# Magic Missile costs 53 mana. It instantly does 4 damage.
+# Drain costs 73 mana. It instantly does 2 damage and heals you for 2 hit points.
+# Shield costs 113 mana. It starts an effect that lasts for 6 turns. While it is active, your armor is increased by 7.
+# Poison costs 173 mana. It starts an effect that lasts for 6 turns. At the start of each turn while it is active, it deals the boss 3 damage.
+# Recharge costs 229 mana. It starts an effect that lasts for 5 turns. At the start of each turn while it is active, it gives you 101 new mana.
+my %spell = (
+    m => { name => "Magic Missile", cost => 53,  cast => sub { $_[1]{hp} -= 4 } },
+    d => { name => "Drain",         cost => 73,  cast => sub { $_[1]{hp} -= 2; $_[0]{hp} += 2 } },
+    s => { name => "Shield",        cost => 113, dur => 6, cast => sub { $_[0]{armor} += 7 }, end => sub { $_[0]{armor} -= 7 } },
+    p => { name => "Poison",        cost => 173, dur => 6, update => sub { $_[1]{hp} -= 3 } },
+    r => { name => "Recharge",      cost => 229, dur => 5, update => sub { $_[0]{mana} += 101 } },
+#    '.'=> { name => "noop",          cost => 0 },
+);
+
+sub update {
+    my ($a, $b) = @_;
+    for my $upd (grep $$a{$_}, keys %spell) {
+        $$a{$upd}--;
+        # say "Update $upd: $$a{$upd}";
+        $spell{$upd}{update}->($a, $b) if $spell{$upd}{update};
+        $spell{$upd}{end}->($a, $b)    if 0 == $$a{$upd} and $spell{$upd}{end};
+    }
+}
+
+sub apply {
+    my ($spell, $a, $b) = @_;
+
+    # say "Cast $spell";
+    my $a1 = { %$a };
+    my $b1 = { %$b };
+    $$a1{hp} -= $PING;
+    return [ $a1, $b1 ] if $$a1{hp} <= 0;
+    $$a1{l} .= $spell;
+    $$a1{spent} += $spell{$spell}{cost};
+    $$a1{mana}  -= $spell{$spell}{cost};
+    $$a1{$spell} = $spell{$spell}{dur} if $spell{$spell}{dur};
+    $spell{$spell}{cast}->($a1, $b1)   if $spell{$spell}{cast};
+
+    # Boss turn
+    update($a1, $b1);
+    return [ $a1, $b1 ] if $$b1{hp} <= 0;
+    my $damage = $$b1{damage} - $$a1{armor};
+    $damage = 1 if $damage < 1;
+    $$a1{hp} -= $damage;
+
+    return [ $a1, $b1 ];
+}
+
+sub turn {
+    my @rv;
+    my ($a, $b) = @_;
+    update($a, $b);
+    for my $spell (grep !$$a{$_}, keys %spell) {
+        next if $spell{$spell}{cost} > $$a{mana};
+        push @rv, apply($spell, $a, $b);
+    }
+    return @rv;
+}
+
+sub MAIN {
+    my $self  = { hp => 50, mana => 500, armor => 0, spent => 0 };
+    my $enemy = { hp => 55, damage => 8 };
+
+    say "Example 1:";
+    my $state = [ { hp => 10, mana => 250, armor => 0, spent => 0 }, { hp => 13, damage => 8 } ];
+    say pp $_ for @$state;
+    for (qw/ p m /) {
+        update(@$state);
+        $state = apply($_, @$state);
+        say pp $_ for @$state;
+    }
+
+    say "\nExample 2:";
+    my $state = [ { hp => 10, mana => 250, armor => 0, spent => 0 }, { hp => 14, damage => 8 } ];
+    say pp $_ for @$state;
+    for (qw/ r s d p m /) {
+        update(@$state);
+        $state = apply($_, @$state);
+        say pp $_ for @$state;
+    }
+
+    say "\nPart 1";
+    my (@win, @lose);
+    my @todo = ([$self, $enemy]);
+    my $spend = 99999999999;
+    while (@todo) {
+        for my $res (turn(@{shift @todo})) {
+            if ($$res[1]{hp} <= 0) {
+                say "WIN! $$res[0]{l} (spent $$res[0]{spent} mana)" if $$res[0]{spent} < $spend;
+                # push @win, $$res[0];
+                $spend = $$res[0]{spent} if $$res[0]{spent} < $spend;
+            }
+            elsif ($$res[0]{hp} <= 0) {
+                # say "LOSE! $$res[0]{l}";
+                # push @lose, $$res[0];
+            }
+            elsif ($$res[0]{spent} < $spend) {
+                # say "... $$res[0]{l}: $$res[0]{hp}  $$res[1]{hp}";
+                push @todo, $res;
+            }
+        }
+    }
+    ## WIN! pmmpmm (spent 558 mana)     ## Too low  (oops, broken implementation)
+    ## WIN! prspm.p.. (spent 914 mana)  ## Too low  (noop probably not allowed)
+    ## WIN! mprmpsmmm (spent 953 mana)
+
+    say "\nPart 2";
+    $PING = 1;
+    @todo = ([$self, $enemy]);
+    $spend = 99999999999;
+    while (@todo) {
+        for my $res (turn(@{shift @todo})) {
+            if ($$res[1]{hp} <= 0) {
+                say "WIN! $$res[0]{l} (spent $$res[0]{spent} mana)" if $$res[0]{spent} < $spend;
+                # push @win, $$res[0];
+                $spend = $$res[0]{spent} if $$res[0]{spent} < $spend;
+            }
+            elsif ($$res[0]{hp} <= 0) {
+                # say "LOSE! $$res[0]{l}";
+                # push @lose, $$res[0];
+            }
+            elsif ($$res[0]{spent} < $spend) {
+                # say "... $$res[0]{l}: $$res[0]{hp}  $$res[1]{hp}";
+                push @todo, $res;
+            }
+        }
+    }
+    # WIN! pdrpsrpdm (spent 1289 mana)
+
+}
+
+MAIN(@ARGV);

@@ -1,0 +1,87 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+use Data::Dump 'pp';
+use YAML::XS;
+use Test::More;
+use List::Util qw/ sum product /;
+use Algorithm::Combinatorics qw/ partitions combinations /;
+use Sort::Key qw/ ikeysort_inplace /;
+
+use lib '/home/duelafn/Computers/Perl/Math-BinPacking/lib';
+use Math::BinPacking qw/ pack_first_fit_decreasing pack_items print_bins /;
+
+
+sub pack_sleigh {
+    my ($N, @pkg) = @_;
+    @pkg = sort { $b <=> $a } @pkg;
+    my $SIZE = sum(@pkg)/$N;
+
+    my ($min) = grep sum(@pkg[0..($_-1)]) >= $SIZE, 1..$#pkg;
+    for my $n ($min..$#pkg) {
+        my $iter = combinations(\@pkg, $n);
+        my @todo;
+        while (my $c = $iter->next) {
+            next unless $SIZE == sum(@$c);
+            push @todo, [ product(@$c), $c ];
+        }
+        ikeysort_inplace { $$_[0] } @todo;
+
+        for my $t (@todo) {
+            my %item = map +($_,1), @pkg;
+            delete $item{$_} for @{$$t[1]};
+            my @bins = pack_items $SIZE, [ keys %item ];
+            if (($N-1) == @bins) {
+                print_bins $$t[1], @bins;
+                say "\nEntanglement: ", $$t[0];
+                return
+            }
+        }
+    }
+}
+
+
+sub MAIN {
+#     my @pkg = qw/ 1 2 3 4 5 7 8 9 10 11 /;
+    my @pkg = qw/ 1 2 3 7 11 13 17 19 23 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97 101 103 107 109 113 /;
+
+    pack_sleigh(3, @pkg);
+    pack_sleigh(4, @pkg);
+
+#     my $best;
+#     my $iter = partitions(\@pkg, 3); # NOPE, 11438127792025 of these!
+#   ITER:
+#     while (my $p = $iter->next) {
+#         # Even balance
+#         for (@$p) { next ITER unless $SIZE == sum(@$_) }
+#
+#         # Smallest in front
+#         @$p = sort { $#{$a} <=> $#{$b} } @$p;
+#         if (!$best or ($$p[0] < $$best[0] or ($$best[0] == $$p[0] and $$p[1] < $$best[1]))) {
+#             $best = [ 0+@{$$p[0]}, product(@{$$p[0]}), @$p ];
+#         }
+#     }
+
+#     # n, qe, size, size, size
+#     my $A = [ [0,1,0,0,0] ];
+#     my $B = [];
+#     for my $next (reverse @pkg) {
+#         for my $t (@$A) {
+#             push @$B, [ $$t[0]+1, $$t[1]*$next, $$t[2]+$next, $$t[3], $$t[4] ] if $$t[2]+$next <= $SIZE;
+#             push @$B, [ $$t[0], $$t[1], $$t[2], $$t[3]+$next, $$t[4] ]         if $$t[3]+$next <= $SIZE;
+#             push @$B, [ $$t[0], $$t[1], $$t[2], $$t[3], $$t[4]+$next ]         if $$t[4]+$next <= $SIZE;
+#         }
+#         @$A = ();
+#         ($A, $B) = ($B, $A);
+#     }
+#
+#     my $best = $$A[0];
+#     for (@$A) {
+#         $best = $_ if $$_[0] < $$best[0] or ($$best[0] == $$_[0] and $$_[1] < $$best[1]);
+#     }
+
+#     say "@$best";
+}
+
+
+MAIN(@ARGV);

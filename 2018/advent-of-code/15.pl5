@@ -1,0 +1,222 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.020;
+
+package Creature {
+    use Moose;
+    use Sort::Key::Maker sort_by_hp => sub { $_->hp, $_->y, $_->x },  qw(integer integer integer);
+    use Sort::Key::Maker sort_paths => sub { $$_[0], $$_[1][1], $$_[1][0] },  qw(integer integer integer);
+
+    has alliance => is => 'ro', isa => 'Str', required => 1;
+    has initial  => is => 'ro', isa => 'ArrayRef', required => 1;
+
+    has x        => is => 'rw', isa => 'Int', lazy_build => 1;
+    has y        => is => 'rw', isa => 'Int', lazy_build => 1;
+    sub _build_x { shift->initial->[0] }
+    sub _build_y { shift->initial->[1] }
+    sub key {
+        my $self = shift;
+        return join(",", $self->x, $self->y);
+    }
+
+    has power       => is => 'rw', isa => 'Int', default => 3;
+    has hp          => is => 'rw', isa => 'Int', default => 200;
+
+    sub action {
+        my ($self, $board) = @_;
+        my ($x, $y) = ($self->x, $self->y);
+        my $path = $self->_find_path($x, $y, 0, $board, { "$x,$y" => 1 });
+        # print("{} at ({},{}), nearest enemy is at ({},{}), {} steps away, first step: ({},{})".format(self.alliance, self.yx[1], self.yx[0], path[2], path[1], path[0], path[3][1], path[3][0]))
+        $board->move($self, $$path[1]) if $$path[0] > 0;
+        my $target = $self->_find_target($board);
+        $board->attack($self, $target) if $target;
+    }
+
+    sub _find_target {
+        my ($self, $board) = @_;
+        my ($x, $y) = ($self->x, $self->y);
+        my @targets;
+        for my $p ([$x,$y-1], [$x-1,$y], [$x+1,$y], [$x,$y+1]) {
+            my $c = $board->grid->{"$$p[0],$$p[1]"};
+            push @targets, $c if $c and $c->alliance ne $self->alliance;
+        }
+        @targets = sort_by_hp(@targets);
+        return $targets[0];
+    }
+
+    sub _find_path {
+        my ($self, $x, $y, $d, $board, $found, %seen) = @_;
+        my @todo = ([0, undef, $x, $y]);
+        while (@todo) {
+            my $t = shift @todo;
+            my ($d, $step1, $x, $y) = @$t;
+            next if $seen{"$x,$y"}++;
+            for my $p ([$x,$y-1], [$x-1,$y], [$x+1,$y], [$x,$y+1]) {
+                my $key = "$$p[0],$$p[1]";
+                next if $seen{$key};
+                my $c = $board->grid->{$key};
+                if ($c and $c->alliance ne $self->alliance) {
+                    # Found an enemy, no need to move from here
+                    return [ $d, $step1 ];
+                } elsif (defined($c)) {
+                    # Empty spot, will consider moving there
+                    push @todo, [ $d+1, $step1 || $p, @$p ];
+                }
+            }
+        }
+    }
+
+    sub _find_path_hybrid {
+        my ($self, $x, $y, $d, $board, $seen, $step1, $found) = @_;
+        return if $found and $d > $found;
+
+        # Local search of depth d+1. opt is in order, so take the first match.
+        my @todo;
+        for my $p ([$x,$y-1], [$x-1,$y], [$x+1,$y], [$x,$y+1]) {
+            my $key = "$$p[0],$$p[1]";
+            next if $$seen{$key}++;
+
+            my $c = $board->grid->{$key};
+            if ($c and $c->alliance ne $self->alliance) {
+                # Found an enemy, no need to move from here
+                return [ $d, $step1 ];
+            } elsif (defined($c)) {
+                # Empty spot, will consider moving there
+                push @todo, $p;
+            }
+        }
+
+        # Recursive search. Order of opt doesn't help, so have to search
+        # all, but set "found" once we find something to short-circuit if
+        # possible.
+        my @rv;
+        for my $p (@todo) {
+            my $t = $self->_find_path($$p[0], $$p[1], $d+1, $board, { %$seen }, $step1 || $p, $found);
+            if ($t) {
+                $found = $$t[0] if !$found or $$t[0] < $found;
+                push @rv, $t;
+            }
+        }
+        @rv = sort_paths(@rv);
+        return $rv[0];
+    }
+}
+
+package Board {
+    use Moose;
+    use List::Util qw/ sum /;
+    use Sort::Key::Maker sort_by_yx => sub { $_->y, $_->x },  qw(integer integer);
+    use Set::Object;
+    use Scalar::Util qw/ refaddr /;
+
+    has grid      => is => 'ro', isa => 'HashRef',  default => sub { {} };
+    has creatures => is => 'ro', isa => 'Set::Object', default => sub { Set::Object->new };
+    has army      => is => 'ro', isa => 'HashRef',  default => sub { {} };
+    has time      => is => 'rw', isa => 'Int',      default => 0;
+    has width     => is => 'rw', isa => 'Int',      default => 0;
+    has height    => is => 'rw', isa => 'Int',      default => 0;
+
+    sub score {
+        my $self = shift;
+        return $self->time * $self->hp_sum;
+    }
+    sub hp_sum {
+        my $self = shift;
+        return sum(map $_->hp, @{$self->creatures});
+    }
+
+    sub load {
+        my ($self, $fname) = @_;
+        open my $F, "<", $fname or die "Error reading $fname: $!";
+        my $y = 0;
+        for (<$F>) {
+            chomp;
+            $y++;
+            my $x = 0;
+            for (split //, $_) {
+                $x++;
+                if ($_ eq '.') {
+                    $self->grid->{"$x,$y"} = ""
+                } elsif (/[GE]/) {
+                    my $c = Creature->new(alliance => $_, initial => [$x, $y]);
+                    $self->creatures->insert($c);
+                    $self->grid->{"$x,$y"} = $c;
+                    $self->army->{$_}++;
+                }
+            }
+            $self->width($x);
+        }
+        $self->height($y);
+        return $self
+    }
+
+    sub move {
+        my ($self, $c, $xy) = @_;
+        my $key = "$$xy[0],$$xy[1]";
+        die "Creature can't move off the map (to @$xy)" unless defined($self->grid->{$key});
+        die "Position @$xy already occupied" if $self->grid->{$key};
+        die sprintf("Creature (%s initially at (%d,%d)) isn't where we thought it was (at %s)",
+                    $c->alliance, @{$c->initial}, $c->key) unless refaddr($self->grid->{$c->key})||0 == refaddr($c)||-1;
+
+        $self->grid->{$c->key} = "";
+        $c->x($$xy[0]); $c->y($$xy[1]);
+        $self->grid->{$key} = $c;
+    }
+
+    sub attack {
+        my ($self, $a, $d) = @_;
+        $d->hp($d->hp() - $a->power);
+        if ($d->hp <= 0) {
+            printf("%s at %d,%d has died in round %d\n", $d->alliance, $d->x, $d->y, $self->time);
+            die sprintf("Creature (%s initially at (%d,%d)) didn't die where we thought it was (at %d,%d)",
+                        $d->alliance, @{$d->initial}, $d->x, $d->y) unless refaddr($self->grid->{$d->key})||0 == refaddr($d)||0;
+
+            $self->grid->{$d->key} = "";
+            $self->creatures->remove($d);
+            $self->army->{$d->alliance}--;
+        }
+    }
+
+    sub tick {
+        my ($self) = @_;
+        $self->time(1 + $self->time);
+        my @creatures = sort_by_yx(@{$self->creatures});
+        for my $c (@creatures) {
+            next unless $c->hp > 0;
+            $c->action($self);
+        }
+
+        return !grep(0 == $_, values %{$self->army});
+    }
+
+    sub show {
+        my ($self) = @_;
+        for my $y (1..$self->height) {
+            my $line;
+            for my $x (1..$self->width) {
+                $line .= ref($_) ? $_->alliance : (($_ // "#") || ".") for $self->grid->{"$x,$y"};
+            }
+            say $line;
+        }
+        say "";
+    }
+
+}
+
+
+sub MAIN {
+    my $file = shift // "15.in";
+    my $board = Board->new->load($file);
+    $board->show;
+    if (my $rounds = shift) {
+        for (1..$rounds) {
+            $board->tick;
+            $board->show;
+        }
+    } else {
+        $board->show while $board->tick;
+    }
+    $board->show;
+    printf "Outcome: %d*%d = %d\n", $board->time, $board->hp_sum, $board->score;
+}
+
+MAIN(@ARGV);

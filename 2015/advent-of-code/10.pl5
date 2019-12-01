@@ -1,0 +1,35 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+use Data::Dump 'pp';
+use YAML::XS;
+use Test::More;
+
+sub counter { $_[0] =~ s/(\d)(\1*)/(1+length($2)).$1/ger }
+
+sub MAIN {
+    is counter("1"), "11";
+    is counter("11"), "21";
+    is counter("21"), "1211";
+    is counter("1211"), "111221";
+    is counter("111221"), "312211";
+
+    my $x = "1113222113";
+    $x = counter($x) for 1..40;
+    say length($x);
+
+    $x = counter($x) for 41..50;
+    say length($x);
+}
+
+
+sub cat {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    chomp(my @lines = <$F>);
+    return @lines;
+#     local $/ = undef;
+#     return scalar <$F>;
+}
+
+MAIN(@ARGV);

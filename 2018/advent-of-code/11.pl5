@@ -1,0 +1,50 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+use Dean::Util qw/ clprint pmap /;
+
+our $SERIAL = 3628;
+our @CACHE;# cache will be built up separately in each thread, but that is fine since we reuse threads
+
+func power($x, $y, $size) {
+    my $p = 0;
+    for my $dx (0..($size-1)) {
+        for my $dy (0..($size-1)) {
+            $p += ($CACHE[$x+$dx][$y+$dy] //= int((($x+10+$dx)*(($x+10+$dx)*($y+$dy) + $SERIAL)%1000)/100) - 5);
+        }
+    }
+    return $p;
+}
+
+func best($size) {
+    my @max = (-9999, 0, 0, 0);
+    for my $x (1..(301-$size)) {
+        for my $y (1..(301-$size)) {
+            my $p = power($x, $y, $size);
+            @max = ($p, $x, $y, $size) if $p > $max[0];
+        }
+    }
+    return \@max;
+}
+
+
+sub MAIN {
+    $| = 1;
+    $SERIAL = shift if @_;
+    my @lst = sort { $$b[0] <=> $$a[0] } pmap { say $_; best($_) } 1..300;
+    my @max = @{$lst[0]};
+    say "Max power is $max[0] at ($max[1], $max[2]) with size $max[3]";
+}
+
+# Max power is 88 at (236, 175) with size 11
+## On jhegaala:
+# real    133m7.786s
+# user    526m56.961s
+# sys     0m4.807s
+
+## On tsalmoth:
+# real    36m50.331s
+# user    290m3.028s
+# sys     0m3.549s
+
+MAIN(@ARGV);

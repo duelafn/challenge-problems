@@ -1,0 +1,41 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+
+
+sub MAIN {
+    my $str = "37";
+    my $gen = shift // 505961;
+    my $target = shift // $gen;
+    my ($a, $b) = (0, 1);
+
+    while (length($str) < $gen+10) {
+        my $x = substr($str, $a, 1);
+        my $y = substr($str, $b, 1);
+        $str .= ($x+$y);
+        $a = ($a + $x + 1) % length($str);
+        $b = ($b + $y + 1) % length($str);
+    }
+
+    say substr($str, $gen, 10);
+
+    if ($str =~ /$target/) {
+        say "Found $target after recipe $-[0]";
+        exit;
+    }
+
+    while (1) {
+        my $x = substr($str, $a, 1);
+        my $y = substr($str, $b, 1);
+        my $pos = length($str) - length($target);
+        $str .= ($x+$y);
+        $a = ($a + $x + 1) % length($str);
+        $b = ($b + $y + 1) % length($str);
+        pos($str) = $pos;# Note: This is infinitely faster than /$target.?$/ - so much for /$/ optimizations!
+        if ($str =~ /$target/g) {
+            say "Found $target after recipe $-[0]";
+            exit;
+        }
+    }
+}
+
+MAIN(@ARGV);

@@ -1,0 +1,51 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+use Data::Dump 'pp';
+use YAML::XS;
+use JSON;
+
+our $PART;
+sub deep_sum {
+    my $d = shift;
+    my $ref = ref($d);
+    if ($ref eq 'ARRAY') {
+        my $sum = 0;
+        $sum += deep_sum($_) for @$d;
+        return $sum;
+    }
+    elsif ($ref eq 'HASH') {
+        my $sum = 0;
+        my $red = 0;
+        for (values %$d) {
+            $red = 1 if $_ eq 'red';
+            $sum += deep_sum($_);
+        }
+        return( ($PART == 2 and $red) ? 0 : $sum );
+    }
+    elsif ($d =~ /[^\d-]/) {
+        return 0;# die "unexpected scalar: $d";
+    }
+    else {
+        return 0+$d;
+    }
+}
+
+sub MAIN {
+    my $file = shift // "12.in";
+
+    $PART = 1;
+    say "Part 1: ", deep_sum(decode_json(cat($file)));
+
+    $PART = 2;
+    say "Part 2: ", deep_sum(decode_json(cat($file)));
+}
+
+sub cat {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    local $/ = undef;
+    return scalar <$F>;
+}
+
+MAIN(@ARGV);

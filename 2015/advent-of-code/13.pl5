@@ -1,0 +1,59 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+use Data::Dump 'pp';
+use YAML::XS;
+
+our %happy;
+sub load {
+    for (@_) {
+        if (my ($a, $pm, $n, $b) = /(\w+) would (gain|lose) (\d+) .*? next to (\w+)/) {
+            $n = -$n if $pm eq 'lose';
+            $happy{people}{$a} = $happy{people}{$b} = 1;
+            $happy{"$a.$b"} = $n;
+            $happy{"$a.Me"} = $happy{"Me.$a"} = 0;
+        }
+    }
+    return \%happy;
+}
+
+# Number is @lst - 2
+# Insert at 2..$#lst
+sub part1 {
+    my ($lst, $todo) = @_;
+    return $lst unless @$todo;
+    my ($c, @next) = @$todo;
+    my $best;
+    for my $idx (2..$#{$lst}) {
+        my @lst = @$lst;
+        my ($a, $b) = @lst[$idx-1, $idx];
+        splice @lst, $idx, 0, $c;
+        $lst[0] = $lst[0] - $happy{"$a.$b"} - $happy{"$b.$a"} + $happy{"$a.$c"} + $happy{"$c.$a"} + $happy{"$c.$b"} + $happy{"$b.$c"};
+        my $rv = part1(\@lst, \@next);
+        $best = $rv if !$best or $$best[0] < $$rv[0];
+    }
+    return $best;
+}
+
+sub MAIN {
+    my $file = shift // "13.in";
+    load(cat($file));
+    my ($a, $b, @people) = keys %{$happy{people}};
+    my @lst = (2*($happy{"$a.$b"} + $happy{"$b.$a"}), $a, $b, $a);
+
+    my $best = part1(\@lst, \@people);
+    say "Part 1: @$best";
+
+    $best = part1(\@lst, [ @people, 'Me' ]);
+    say "Part 2: @$best";
+}
+
+
+sub cat {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    chomp(my @lines = <$F>);
+    return @lines;
+}
+
+MAIN(@ARGV);

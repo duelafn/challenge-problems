@@ -1,0 +1,46 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Data::Dump 'pp';
+
+sub build {
+    my @rv = ("my %r;", "no warnings 'uninitialized';");
+    push @rv, @{shift()} if 'ARRAY' eq ref($_[0]);
+    my $i = 0;
+    for (@_) {
+        my $cmd = "l$i: ";
+        if    (/hlf (\w+)/) { $cmd .= "\$r{$1} /= 2;" }
+        elsif (/tpl (\w+)/) { $cmd .= "\$r{$1} *= 3;" }
+        elsif (/inc (\w+)/) { $cmd .= "\$r{$1} += 1;" }
+        elsif (/jmp ([+-]?\d+)/) { $cmd .= "goto l@{[ $i + $1 ]};" }
+        elsif (/jie (\w+), ([+-]?\d+)/) { $cmd .= "goto l@{[ $i + $2 ]} unless \$r{$1} % 2;" }
+        elsif (/jio (\w+), ([+-]?\d+)/) { $cmd .= "goto l@{[ $i + $2 ]} if 1 == \$r{$1};" }
+        else { die "Parse error: '$_'" }
+        push @rv, $cmd;
+        $i++;
+    }
+    push @rv, "l$i: ";
+    push @rv, "say Data::Dump::pp(\\%r);";
+    return join "\n", @rv;
+}
+
+
+sub MAIN {
+    my $file = shift // "23.in";
+    say "Part 1:";
+    my $prog = build(cat($file));
+    eval $prog; say "$@" if $@;
+
+    say "Part 2:";
+    $prog = build(['$r{a} = 1;'], cat($file));
+    eval $prog; say "$@" if $@;
+}
+
+
+sub cat {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    chomp(my @lines = <$F>);
+    return @lines;
+}
+
+MAIN(@ARGV);

@@ -1,0 +1,46 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+use Data::Dump 'pp';
+use YAML::XS;
+use Test::More;
+
+sub is_valid {
+    state $az = [ 'a'..'z' ];
+    state $increasing = join "|", map "$$az[$_]$$az[$_+1]$$az[$_+2]", 0..($#{$az}-2);
+
+    local $_ = shift;
+    return 0 if /[iol]/;
+    return 0 unless /$increasing/;
+    my %pair;
+    $pair{$_}++ for /([a-z])\1/g;
+    return (keys %pair) > 1;
+}
+
+sub next_valid {
+    my $p = shift;
+    $p++;
+    until (is_valid($p)) {
+        $p++;
+        $p =~ s/i(.+)/"j".("a"x(length($1)))/e;
+        $p =~ s/o(.+)/"p".("a"x(length($1)))/e;
+        $p =~ s/l(.+)/"m".("a"x(length($1)))/e;
+    }
+    return $p;
+}
+
+
+sub MAIN {
+    ok !is_valid("hijklmmn");
+    ok !is_valid("abbceffg");
+    ok !is_valid("abbcegjk");
+
+    is next_valid("abcdefgh"), "abcdffaa";
+    is next_valid("ghijklmn"), "ghjaabcc";
+
+    my $pass = "cqjxjnds";
+    say "Next: ", $pass = next_valid($pass);
+    say "Next: ", $pass = next_valid($pass);
+}
+
+MAIN(@ARGV);

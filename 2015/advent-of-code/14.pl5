@@ -1,0 +1,59 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+
+package Reindeer {
+    use Method::Signatures::Simple;
+    use List::Util qw/ min /;
+    method new { bless { @_ }, $self }
+    method name  { $self->{name} }
+    method fly   { $self->{fly} }
+    method speed { $self->{speed} }
+    method rest  { $self->{rest} }
+    method cycle { $self->{fly} + $self->{rest} }
+    method cdist { $self->{fly} * $self->{speed} }
+    method parse($line) {
+        die unless $line =~ m#(\w+) can fly (\d+) km/s for (\d+) seconds, but then must rest for (\d+) seconds#;
+        $self->{name}  = $1;
+        $self->{speed} = $2;
+        $self->{fly}   = $3;
+        $self->{rest}  = $4;
+        return $self;
+    }
+
+    method p($t) {
+        my $cycle = $self->cycle;
+        my $d = int($t / $cycle) * $self->cdist;
+        $d += $self->speed() * min($t % $cycle, $self->fly);
+        return $d;
+    }
+}
+
+sub winner {
+    my ($t, @deer) = @_;
+    @deer = sort { $$b[1] <=> $$a[1] } map [ $_, $_->p($t) ], @deer;
+    return map $$_[0]->name, grep $$_[1] == $deer[0][1], @deer;
+}
+
+sub MAIN {
+    my $file = shift // "14.in";
+    my @deer = map Reindeer->new->parse($_), cat($file);
+    say $$_[0]->name, " went ", $$_[1] for sort { $$b[1] <=> $$a[1] } map [ $_, $_->p(2503) ], @deer;
+
+    say "";
+
+    my %point;
+    for (1..2503) {
+        $point{$_}++ for winner($_, @deer);
+    }
+    say "$_: $point{$_}" for sort { $point{$b} <=> $point{$a} } keys %point;
+}
+
+sub cat {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    chomp(my @lines = <$F>);
+    return @lines;
+}
+
+MAIN(@ARGV);

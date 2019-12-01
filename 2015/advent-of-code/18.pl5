@@ -1,0 +1,77 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+use Data::Dump 'pp';
+use YAML::XS;
+use Test::More;
+use List::Util qw/ sum /;
+our $SIZE = 100;
+our @NEIGHBORS = ([-1,-1], [-1,0], [-1,1], [0,-1], [0,1], [1,-1], [1,0], [1,1]);
+
+
+sub step1 {
+    my ($grid) = @_;
+    my @new;
+    my $N = $SIZE-1;
+    for my $i (0..$N) {
+        my @row;
+        for my $j (0..$N) {
+            my $n = 0;
+            for my $dp (@NEIGHBORS) {
+                my ($y, $x) = ($i+$$dp[0], $j+$$dp[1]);
+                $n++ if 0 <= $y and $y < $SIZE and 0 <= $x and $x < $SIZE and $$grid[$y][$x];
+            }
+            if ($$grid[$i][$j]) {
+                $row[$j] = (2 <= $n and $n <= 3) ? 1 : 0;
+            } else {
+                $row[$j] = (3 == $n) ? 1 : 0;
+            }
+        }
+        push @new, \@row;
+    }
+    return \@new;
+}
+
+sub count {
+    my $count = 0;
+    $count += sum(@$_) for @{$_[0]};
+    return $count;
+}
+
+sub show {
+    return;
+    say map +($_ ? "#" : "."), @$_ for @{$_[0]};
+}
+
+sub MAIN {
+    my $file = shift // "18.in";
+    my $gif = load($file);
+    show($gif); say "";
+    $gif = step1($gif) for 1..100;
+    show($gif); say "";
+    say "Step 1: ", count($gif);
+
+    $gif = load($file);
+    for (1..100) {
+        $$gif[0][0] = $$gif[0][$SIZE-1] = $$gif[$SIZE-1][0] = $$gif[$SIZE-1][$SIZE-1] = 1;
+        $gif = step1($gif);
+        $$gif[0][0] = $$gif[0][$SIZE-1] = $$gif[$SIZE-1][0] = $$gif[$SIZE-1][$SIZE-1] = 1;
+    }
+    show($gif); say "";
+    say "Step 2: ", count($gif);
+}
+
+
+sub load {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    my @map;
+    for (<$F>) {
+        chomp;
+        push @map, [ map { /#/ ? 1 : 0 } split //, $_ ];
+    }
+    $SIZE = @map;
+    return \@map;
+}
+
+MAIN(@ARGV);

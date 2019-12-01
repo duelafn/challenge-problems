@@ -1,0 +1,102 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+use Data::Dump 'pp';
+use YAML::XS;
+use Test::More;
+use Text::Balanced qw/ extract_bracketed /;
+our @TRANS;
+our %TERMINAL;
+# https://www.reddit.com/r/adventofcode/comments/3xflz8/day_19_solutions/
+
+sub replace_all {
+    my $str = shift;
+    my %seen;
+    for my $t (@TRANS) {
+        my $idx = 0;
+        while (($idx = index($str, $$t[0], $idx)) >= 0) {
+            my $new = $str;
+            substr $new, $idx, length($$t[0]), $$t[1];
+            $seen{$new}++;
+            $idx += length($$t[0]);
+        }
+    }
+    return \%seen;
+}
+
+sub extract_foo {
+    my $target = shift;
+    $target =~ s/Y/,/g;
+    $target =~ s/Rn/(/g;
+    $target =~ s/Ar/)/g;
+    say $target;
+
+    return "";
+}
+
+sub build {
+    my $target = shift;
+    my @todo = ([0, $target]);
+    my %seen = ('e' => 1);
+    my %uniq = ( PMg => 'F' );# Provably the only possible replacement
+    my $uniq_pat = join "|", keys %uniq;
+    local @TRANS = map [ $$_[1], $$_[0] ], @TRANS;
+    my $best = 1000;
+    while (@todo) {
+        my ($n, $str) = @{pop @todo};
+        $n++ while $str =~ s/($uniq_pat)/$uniq{$1}/;
+#         say "$n: $str";
+        next if $n >= $best;
+        my $next = replace_all($str);
+        $n++;
+        say $best = $n if exists($$next{e}) and $n < $best;
+        push @todo, map [$n, $_], grep !($seen{$_}++), keys %$next;
+    }
+    return undef;
+}
+
+sub silly {
+    my $target = shift;
+    my %rule = map +($$_[1] => $$_[0]), @TRANS;
+    my $count = 0;
+    my $pat = join "|", sort { length($b) <=> length($a) } map $$_[1], @TRANS;
+    $count++ while $target =~ s/($pat)/$rule{$1}/;
+    say "$count: ", scalar reverse $target;
+    return $count;
+}
+
+sub MAIN {
+    my $file = shift // "19.in";
+    my $str = load($file);
+    my $seen = replace_all($str);
+    say "Part 1: ", 0+(keys %$seen);
+
+    my @pieces = ($str =~ /([A-Z][a-z]*)/g);
+#     say "Part 2: ", extract_foo($str);
+#     say "Part 2: ", silly($str);  # 201 -> too low
+#     say "Part 2: ", @pieces - 2*(grep /Rn/, @pieces) - 2*(grep /Y/, @pieces);  # https://www.reddit.com/r/adventofcode/comments/3xflz8/day_19_solutions/
+    say "Part 2: ", build($str); # 207 boom!, but can't prove it is best.
+}
+
+
+sub load {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    my %k;
+    for (<$F>) {
+        chomp;
+        if (/(\w+) => (\w+)/) {
+            $k{$1} = 1;
+            push @TRANS, [ $1, $2 ];
+        } elsif (/\w/) {
+            my $rv = $_;
+            my $s = join "", $rv, keys %k;
+            for ($s =~ /([A-Z][a-z]*)/g) {
+                $TERMINAL{$_} = 1 unless $k{$_};
+            }
+            return $rv;
+        }
+    }
+}
+
+MAIN(@ARGV);

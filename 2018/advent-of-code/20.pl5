@@ -1,0 +1,39 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+
+use Text::Balanced qw/ extract_bracketed /;
+
+sub parse {
+    my $str = shift;
+    return unless $str;
+    my $flat = ($str =~ s/^\|//);
+    if ($str =~ s/^([NSEW]+)//) {
+        my $v = $1;
+        return ( $flat ? ($v, parse($str)) : [$v, parse($str)] );
+    }
+    elsif ($str =~ /^\(/) {
+        my ($a, $b) = extract_bracketed($str, '()');
+        $b =~ s/^\|//;
+        return [ parse(substr($a, 1, -1)), parse($b) ];
+    }
+    else { die "" }
+}
+
+
+sub MAIN {
+    my $file = shift // "20.in";
+    my @tree = parse(cat($file) =~ s/\s*\^//r =~ s/\$\s*$//r);
+    use Data::Dump 'pp'; say pp @tree;
+}
+
+
+sub cat {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+#     chomp(my @lines = <$F>);
+#     return @lines;
+    local $/ = undef;
+    return scalar <$F>;
+}
+
+MAIN(@ARGV);

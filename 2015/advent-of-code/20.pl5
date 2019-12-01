@@ -1,0 +1,44 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+use Data::Dump 'pp';
+use YAML::XS;
+use Test::More;
+use List::Util qw/ max /;
+
+## https://oeis.org/A000203
+# If n is composite, a(n) > n + sqrt(n).
+# a(n) < n*sqrt(n) for all n.
+# a(n) < (6/Pi^2)*n^(3/2) for n > 12.
+sub seq {
+    my ($N, $mul, $max) = @_;
+    $max ||= $N;
+    $mul ||= 1;
+    my @a = (0)x$N;
+    for my $n (1..$N) {
+        my $deliveries = int($N/$n);
+        $deliveries = $max if $deliveries > $max;
+        $a[($_*$n)-1] += $n*$mul for 1..$deliveries;
+    }
+    return \@a
+}
+
+sub idx {
+    my ($a, $n) = @_;
+    my $i = 0;
+    $i++ while $i <= $#{$a} and $$a[$i] < $n;
+    return 'not found' if $i > $#{$a};
+    return $i;
+}
+
+# wxmaxima: 10*divsum(776160);
+
+sub MAIN {
+    my $input = 33_100_000;
+    my $seq = seq(1_000_000, 10);
+    say "Part 1: ", 1+idx($seq, 33100000);   # 776159 is too low
+    $seq = seq(1_000_000, 11, 50);
+    say "Part 2: ", 1+idx($seq, 33100000);
+}
+
+MAIN(@ARGV);

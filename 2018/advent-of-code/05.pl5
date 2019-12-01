@@ -1,0 +1,45 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+
+
+package Foo {
+    use Method::Signatures::Simple;
+    method new { bless { @_ }, $self }
+
+}
+
+
+sub reduce {
+    state $pat = join "|", map +($_.uc($_), uc($_).$_), "a".."z";
+    local $_ = shift;
+    1 while s/$pat//g;
+    return $_;
+}
+
+sub MAIN {
+    my $file = shift // "05.in";
+    my ($polymer) = cat($file);
+    my $reduced = reduce($polymer);
+    say "Naturally reduced to ", length($reduced), " chars";
+
+    my ($char, $best) = ("", length($reduced));
+    for my $c ("a".."z") {
+        my $l = length(reduce($polymer =~ s/$c//irg));
+        ($char, $best) = ($c, $l) if $l < $best;
+    }
+
+    say "Removing $char units reduces to length $best";
+}
+
+
+sub cat {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    chomp(my @lines = <$F>);
+    return @lines;
+#     local $/ = undef;
+#     return scalar <$F>;
+}
+
+MAIN(@ARGV);

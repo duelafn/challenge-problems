@@ -1,0 +1,86 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Sort::Key qw/ nkeysort rnkeysort /;
+
+package Watch {
+    use Method::Signatures::Simple;
+    method new { bless { state => [ (0)x60 ], @_ }, $self }
+
+    method sleep($from, $to) {
+        $$self{state}[$_] = 1 for $from..($to-1);
+    }
+
+    method minutes_asleep() {
+        my $x = 0;
+        $x += $_ for @{$$self{state}};
+        return $x;
+    }
+}
+
+sub most_asleep {
+    my $g = shift;
+    my @v = ( (0)x60 );
+    for my $w (@{$$g{watch}}) {
+        $v[$_] += $$w{state}[$_] for 0..59;
+    }
+    my ($m) = rnkeysort { $v[$_] } 0..59;
+    return ($m, $v[$m]);
+}
+
+sub MAIN {
+    my $file = shift // "04.in";
+    my (%guard, $watch, $sleep);
+
+    for (sort(cat($file))) {
+        die "Parse error: '$_'" unless /(\d+):(\d+)\]/;
+        my ($h, $m) = ($1, $2);
+        if (/Guard #(\d+) begins shift/) {
+            $watch = Watch->new;
+            $guard{$1}{id} = $1;
+            push @{$guard{$1}{watch}}, $watch;
+        }
+
+        elsif (/falls asleep/) {
+            $sleep = (0 == $h) ? $m : -1;
+        }
+
+        elsif (/wakes up/) {
+            if ($sleep < 0 and 0 == $h) {
+                $watch->sleep(0, $m);
+            } elsif ($sleep < 0 and 0 == $h) {
+                $watch->sleep(0, 60);# slept the whole shift! :)
+            } else {
+                $watch->sleep($sleep, (0 == $h) ? $m : 60);
+            }
+        }
+    }
+
+    for my $g (values %guard) {
+        $$g{asleep} = 0;
+        $$g{asleep} += $_->minutes_asleep for @{$$g{watch}};
+    }
+
+    my @by_rsleep = rnkeysort { $$_{asleep} } values %guard;
+    my $g = $by_rsleep[0];
+    my ($m, $n) = most_asleep($g);
+    say "Guard $$g{id} was asleep the most, and most asleep at minute $m: key = @{[ $$g{id} * $m ]}";
+
+    for (@by_rsleep) {
+        my ($_m, $_n) = most_asleep($_);
+        ($g, $m, $n) = ($_, $_m, $_n) if $_n > $n;
+    }
+
+    say "Guard $$g{id} was most reliable to be asleep at minute $m: key = @{[ $$g{id} * $m ]}";
+}
+
+
+sub cat {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    chomp(my @lines = <$F>);
+    return @lines;
+#     local $/ = undef;
+#     return scalar <$F>;
+}
+
+MAIN(@ARGV);

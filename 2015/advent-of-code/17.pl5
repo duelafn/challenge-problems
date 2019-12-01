@@ -1,0 +1,41 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+use Data::Dump 'pp';
+use YAML::XS;
+use Test::More;
+use Algorithm::Combinatorics qw/ combinations /;
+use List::Util qw/ sum /;
+
+sub MAIN {
+    my @sizes = sort { $a <=> $b } qw/ 43 3 4 10 21 44 4 6 47 41 34 17 17 44 36 31 46 9 27 38 /;
+
+    my $litre = 150;
+    my ($min) = reverse grep $litre <= sum(@sizes[$_..$#sizes]), 0..$#sizes;
+    $min = @sizes - $min;
+    my ($max) = grep $litre <= sum(@sizes[0..$_]), 0..$#sizes;
+    say "min: $min   max: $max";
+
+    my $N = 0;
+    my $num = @sizes;
+    my $min_count = 0;
+    for my $k ($min..$max) {
+        my $iter = combinations(\@sizes, $k);
+        while (my $c = $iter->next) {
+            if ($litre == sum(@$c)) {
+                $N++;
+                if (@$c == $num) {
+                    $min_count++;
+                } elsif (@$c < $num) {
+                    $num = @$c;
+                    $min_count = 1;
+                }
+            }
+        }
+    }
+    say "Part 1: $N";
+
+    say "Part 2: min containers: $num   number ways: $min_count";
+}
+
+MAIN(@ARGV);

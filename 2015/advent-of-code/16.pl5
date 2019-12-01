@@ -1,0 +1,79 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+use Data::Dump 'pp';
+use YAML::XS;
+use Test::More;
+
+our $PART;
+
+sub MAIN {
+    my $file = shift // "16.in";
+    my $sue = load(cat($file));
+    my $info = {
+        children    => 3,
+        cats        => 7,
+        samoyeds    => 2,
+        pomeranians => 3,
+        akitas      => 0,
+        vizslas     => 0,
+        goldfish    => 5,
+        trees       => 3,
+        cars        => 2,
+        perfumes    => 1,
+    };
+
+    $PART = 1;
+    my $i = find($sue, $info);
+    say "Sue: ", $i+1;
+
+    $PART = 2;
+    $i = find($sue, $info);
+    say "Sue: ", $i+1;
+}
+
+sub find {
+    my ($sues, $info) = @_;
+    my @rv;
+  SUE:
+    for my $i (0..$#{$sues}) {
+        my $sue = $$sues[$i];
+        for my $k (keys %$sue) {
+            if (1 == $PART) {
+                next SUE unless $$sue{$k} == $$info{$k};
+            } else {
+                if ($k eq 'cats' or $k eq 'trees') {
+                    next SUE unless $$sue{$k} > $$info{$k};
+                } elsif ($k eq 'pomeranians' or $k eq 'goldfish') {
+                    next SUE unless $$sue{$k} < $$info{$k};
+                } else {
+                    next SUE unless $$sue{$k} == $$info{$k};
+                }
+            }
+        }
+        push @rv, $i;
+    }
+    say "Found ", 0+@rv, " matches";
+    return $rv[0];
+}
+
+sub load {
+    # Sue 1: goldfish: 9, cars: 0, samoyeds: 9
+    my @rv;
+    for (@_) {
+        die "parse error: '$_'" unless s/^Sue (\d+):\s+//;
+        my $i = $1;
+        my %info = map { split /:\s+/ } split /,\s+/;
+        $rv[$i-1] = \%info;
+    }
+    return \@rv;
+}
+
+sub cat {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    chomp(my @lines = <$F>);
+    return @lines;
+}
+
+MAIN(@ARGV);

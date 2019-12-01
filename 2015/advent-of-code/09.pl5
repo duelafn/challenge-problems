@@ -1,0 +1,85 @@
+#!/usr/bin/perl -w
+use strict; use warnings; use 5.014;
+use Method::Signatures::Simple;
+use Data::Dump 'pp';
+use YAML::XS;
+
+
+sub search {
+    my ($weight, $vert, $p) = @_;
+    my $best;
+    for my $b (@$vert) {
+        next if $$p{$b};
+        my $a = $$p{at};
+        my %new = (%$p, $a => $b, $b => 1, at => $b);
+        $new{_} += $$weight{"$a.$b"};
+        $new{len} += 1;
+        my $b2;
+        if ($new{len} == $#{$vert}) {
+            $b2 = \%new if !$best or $$best{_} > $new{_};
+        } else {
+            $b2 = search($weight, $vert, \%new);
+        }
+        if ($b2 and (!$best or $$best{_} > $$b2{_})) {
+            $best = $b2;
+        }
+    }
+    return $best;
+}
+
+sub search2 {
+    my ($weight, $vert, $p) = @_;
+    my $best;
+    for my $b (@$vert) {
+        next if $$p{$b};
+        my $a = $$p{at};
+        my %new = (%$p, $a => $b, $b => 1, at => $b);
+        $new{_} += $$weight{"$a.$b"};
+        $new{len} += 1;
+        my $b2;
+        if ($new{len} == $#{$vert}) {
+            $b2 = \%new if !$best or $$best{_} < $new{_};
+        } else {
+            $b2 = search2($weight, $vert, \%new);
+        }
+        if ($b2 and (!$best or $$best{_} < $$b2{_})) {
+            $best = $b2;
+        }
+    }
+    return $best;
+}
+
+sub MAIN {
+    my $file = shift // "09.in";
+
+    my (%weight, %vert);
+    for (cat($file)) {
+        if (/(\w+) to (\w+) = (\d+)/) {
+            $weight{"$1.$2"} = $weight{"$2.$1"} = $3;
+            $vert{$1} = $vert{$2} = 1;
+        } else {
+            die;
+        }
+    }
+    my @vert = keys %vert;
+
+    my @path = sort { $$a{_} <=> $$b{_} } map search(\%weight, \@vert, { _ => 0, len => 0, at => $_, $_ => 1 }), @vert;
+    my $best = $path[0];
+    say "Shortest: $$best{_}";
+
+    @path = sort { $$a{_} <=> $$b{_} } map search2(\%weight, \@vert, { _ => 0, len => 0, at => $_, $_ => 1 }), @vert;
+    $best = $path[-1];
+    say "Longest: $$best{_}";
+}
+
+# $g->get_edge_weight($u, $v);
+
+
+sub cat {
+    my $f = shift;
+    open my $F, "<", $f or die "Can't open $f for reading: $!";
+    chomp(my @lines = <$F>);
+    return @lines;
+}
+
+MAIN(@ARGV);
