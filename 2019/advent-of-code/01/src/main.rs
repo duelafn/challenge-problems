@@ -12,7 +12,7 @@ use std::io::prelude::*;
 
 use clap::{Arg, App};
 
-fn records(fname: &str) -> Box<dyn Iterator<Item=i32>> {
+fn records(fname: &str) -> Box<Iterator<Item=i32>> {
     let file = File::open(fname).unwrap_or_else(|err| panic!("Error reading {}: {}", fname, err));
     let reader = BufReader::new(file);
     let name = String::from(fname);
