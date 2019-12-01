@@ -1,3 +1,3 @@
-# advent-of-code-2016-in-perl6
+# challenge-problems
 
-SOLUTIONS to the 2016 Advent of code (http://adventofcode.com/) in Perl6
+Solutions to various challenge sets for sharing.
