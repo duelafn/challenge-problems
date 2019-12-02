@@ -1,5 +1,5 @@
 
-Yes, I'm doing it wrong, I believe in Linux distributions :)
+Yes, I'm doing it wrong, get over it -- I believe in Linux distributions :)
 
 The contents of my ~/.cargo/config takes crates only from pre-installed
 Debian packages (or libraries otherwise added to this folder):
