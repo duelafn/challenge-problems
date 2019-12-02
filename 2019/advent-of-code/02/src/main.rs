@@ -104,8 +104,8 @@ fn main() {
         println!("Part 1: {}", ic.get(0));
     }
 
-    for noun in 0..99 {
-        for verb in 0..99 {
+    for noun in 0..100 {
+        for verb in 0..100 {
             let mut ic = Intcode::load(&fname);
             ic.program[1] = noun;
             ic.program[2] = verb;
