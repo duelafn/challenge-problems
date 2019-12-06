@@ -1,16 +1,45 @@
 
-use std::convert::TryFrom;
 use std::fmt;
 use std::fs;
 
+pub enum Val {
+    Address(usize),
+    Quantity(i32),
+}
+impl fmt::Display for Val {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Address(n) => write!(f, "Address({})", n),
+            Quantity(n) => write!(f, "Quantity({})", n),
+        }
+    }
+}
+impl fmt::Debug for Val {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Address(n) => write!(f, "Address({})", n),
+            Quantity(n) => write!(f, "Quantity({})", n),
+        }
+    }
+}
+
+use Val::*;
+
+#[derive(Clone)]
 pub struct Intcode {
     program: Vec<i32>,
+    input: Vec<i32>,
+    output: Vec<i32>,
     pos: usize,
 }
 
 impl Intcode {
     pub fn new() -> Intcode {
-        return Intcode { program: Vec::new(), pos: 0 };
+        return Intcode { program: Vec::new(), pos: 0, input: Vec::new(), output: Vec::new() };
+    }
+
+    pub fn init(prog: Vec<i32>) -> Intcode {
+        return Intcode { program: prog, pos: 0, input: Vec::new(), output: Vec::new() };
     }
 
     pub fn load(fname: &String) -> Intcode {
@@ -26,53 +55,129 @@ impl Intcode {
         return ic;
     }
 
-    pub fn is_halted(&self) -> bool { 99 == *self.program.get(self.pos).unwrap_or(&99) }
+    pub fn is_halted(&self) -> bool { 99 == self.program[self.pos] }
 
     pub fn run(&mut self) {
         while self.step() { }
     }
 
     pub fn step(&mut self) -> bool {
-        let step = match self.peeka(0) {
-            1 => {
-                let (a, b, c) = (self.peeka(1),  self.peeka(2),  self.peeka(3)); // immutable borrow
-                self.add(a, b, c); // mutable borrow
-                4
-            },
-            2 => {
-                let (a, b, c) = (self.peeka(1),  self.peeka(2),  self.peeka(3)); // immutable borrow
-                self.mul(a, b, c); // mutable borrow
-                4
-            },
-            99 => 0,
-            x_ => panic!("Unknown command at position {}: {}", self.pos, x_),
+        let code = self.program[self.pos];
+        let (mode, code) = (code / 100, code % 100);
+        match code {
+            1 => { let v = self.consume(mode, 3); self.add(v) },
+            2 => { let v = self.consume(mode, 3); self.mul(v) },
+            3 => { let v = self.consume(mode, 1); self.read(v) },
+            4 => { let v = self.consume(mode, 1); self.write(v) },
+            5 => { let v = self.consume(mode, 2); self.jump_if_true(v) },
+            6 => { let v = self.consume(mode, 2); self.jump_if_false(v) },
+            7 => { let v = self.consume(mode, 3); self.lt(v) },
+            8 => { let v = self.consume(mode, 3); self.eq(v) },
+
+            99 => return false,
+            x_ => panic!("Unknown command at position {}: {} ({})", self.pos, x_, self),
         };
-
-        self.pos += step;
-        return step > 0;
+        return true;
     }
 
-    fn add(&mut self, a: usize, b: usize, c: usize) {
-        self.program[c] = self.program[a] + self.program[b];
+    pub fn pipe(&mut self, val: i32) { self.input.push(val); }
+    pub fn cat(&mut self) -> Vec<i32> { self.output.clone() }
+
+    fn add(&mut self, param: Vec<Val>) {
+        if let (Some(a), Some(b), Some(Address(c))) = (param.get(0), param.get(1), param.get(2)) {
+            self.program[*c] = self.get(a) + self.get(b);
+        } else {
+            panic!("Invalid add(). Expected: Val, Val, Address, found '{:?}' instead", param)
+        }
+    }
+    fn mul(&mut self, param: Vec<Val>) {
+        if let (Some(a), Some(b), Some(Address(c))) = (param.get(0), param.get(1), param.get(2)) {
+            self.program[*c] = self.get(a) * self.get(b);
+        } else {
+            panic!("Invalid mul(). Expected: Val, Val, Address, found '{:?}' instead", param)
+        }
     }
 
-    fn mul(&mut self, a: usize, b: usize, c: usize) {
-        self.program[c] = self.program[a] * self.program[b];
+    fn read(&mut self, param: Vec<Val>) {
+        if let Some(Address(a)) = param.get(0) {
+            self.program[*a] = self.input.remove(0)
+        } else {
+            panic!("Invalid mul(). Expected: Val, Val, Address, found '{:?}' instead", param)
+        }
+    }
+    fn write(&mut self, param: Vec<Val>) {
+        if let Some(a) = param.get(0) {
+            let val = self.get(a);
+            self.output.push(val)
+        } else {
+            panic!("Invalid mul(). Expected: Val, Val, Address, found '{:?}' instead", param)
+        }
     }
 
-    pub fn get(&self, i: usize) -> i32 { self.program[i] }
-    pub fn set(&mut self, i: usize, val: i32) { self.program[i] = val }
+    fn jump_if_true(&mut self, param: Vec<Val>) {
+        if let (Some(a), Some(b)) = (param.get(0), param.get(1)) {
+            if self.get(a) != 0 {
+                self.pos = self.get(b) as usize
+            }
+        } else {
+            panic!("Invalid jump_if_true(). Expected: Val, Val, found '{:?}' instead", param)
+        }
+    }
+    fn jump_if_false(&mut self, param: Vec<Val>) {
+        if let (Some(a), Some(b)) = (param.get(0), param.get(1)) {
+            if self.get(a) == 0 {
+                self.pos = self.get(b) as usize
+            }
+        } else {
+            panic!("Invalid jump_if_false(). Expected: Val, Val, found '{:?}' instead", param)
+        }
+    }
+
+    fn lt(&mut self, param: Vec<Val>) {
+        if let (Some(a), Some(b), Some(Address(c))) = (param.get(0), param.get(1), param.get(2)) {
+            self.program[*c] = if self.get(a) < self.get(b) { 1 } else { 0 };
+        } else {
+            panic!("Invalid lt(). Expected: Val, Val, Address, found '{:?}' instead", param)
+        }
+    }
+    fn eq(&mut self, param: Vec<Val>) {
+        if let (Some(a), Some(b), Some(Address(c))) = (param.get(0), param.get(1), param.get(2)) {
+            self.program[*c] = if self.get(a) == self.get(b) { 1 } else { 0 };
+        } else {
+            panic!("Invalid eq(). Expected: Val, Val, Address, found '{:?}' instead", param)
+        }
+    }
+
+    pub fn get(&self, x: &Val) -> i32 {
+        match x {
+            Address(i) => self.program[*i],
+            Quantity(v) => *v,
+        }
+    }
+    pub fn set(&mut self, i: &Val, val: i32) {
+        if let Address(addr) = i {
+            self.program[*addr] = val
+        } else {
+            panic!("Expected address, found '{}' instead", i)
+        }
+    }
     pub fn push(&mut self, val: i32) { self.program.push(val) }
 
-    // fn peek(&self, i: usize) -> i32 { self.get(self.pos + i) }
-    fn geta(&self, i: usize) -> usize {
-        usize::try_from(
-            self.program[i]
-        ).unwrap_or_else(|err| panic!("Expected address at position {}, found '{}' instead: {}", i, self.program[i], err))
+    fn consume(&mut self, mut mode: i32, n: usize) -> Vec<Val> {
+        let mut rv = Vec::new();
+        for i in 1..=n {
+            let m = mode % 10;
+            match m {
+                0 => rv.push(Address(self.program[self.pos+i] as usize)),
+                1 => rv.push(Quantity(self.program[self.pos+i])),
+                _ => panic!("Unexpected mode {}", m),
+            };
+            mode /= 10;
+        }
+        self.pos += n + 1;
+        return rv;
     }
-    fn peeka(&self, i: usize) -> usize { self.geta(self.pos + i) }
 }
-
 impl fmt::Display for Intcode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.program)
@@ -86,33 +191,33 @@ mod tests {
 
     #[test]
     fn day2() {
-        let mut ic = Intcode { program: vec![ 1,0,0,0,99 ], pos: 0 };
+        let mut ic = Intcode::init(vec![ 1,0,0,0,99 ]);
         ic.run();
         assert_eq!(ic.program, vec![ 2,0,0,0,99 ]);// Example 1
 
-        let mut ic = Intcode { program: vec![ 2,3,0,3,99 ], pos: 0 };
+        let mut ic = Intcode::init(vec![ 2,3,0,3,99 ]);
         ic.run();
         assert_eq!(ic.program, vec![ 2,3,0,6,99 ]);// Example 2
 
-        let mut ic = Intcode { program: vec![ 2,4,4,5,99,0 ], pos: 0 };
+        let mut ic = Intcode::init(vec![ 2,4,4,5,99,0 ]);
         ic.run();
         assert_eq!(ic.program, vec![ 2,4,4,5,99,9801 ]);// Example 3
 
-        let mut ic = Intcode { program: vec![ 1,1,1,4,99,5,6,0,99 ], pos: 0 };
+        let mut ic = Intcode::init(vec![ 1,1,1,4,99,5,6,0,99 ]);
         ic.run();
         assert_eq!(ic.program, vec![ 30,1,1,4,2,5,6,0,99 ]);// Example 4
 
         let mut ic = Intcode::load(&String::from("02.in"));
-        ic.set(1, 12);
-        ic.set(2, 2);
+        ic.set(&Val::Address(1 as usize), 12);
+        ic.set(&Val::Address(2 as usize), 2);
         ic.run();
-        assert_eq!(ic.get(0), 3562672);// Part 1
+        assert_eq!(ic.get(&Val::Address(0 as usize)), 3562672);// Part 1
     }
 
     #[test]
     #[should_panic(expected = "Unknown command at position 0: 77")]
     fn bad_command() {
-        let mut ic = Intcode { program: vec![ 77,0,0,0,99 ], pos: 0 };
+        let mut ic = Intcode::init(vec![ 77,0,0,0,99 ]);
         ic.run();
     }
 }
