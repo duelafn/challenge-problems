@@ -4,7 +4,7 @@ use std::fs;
 
 pub enum Val {
     Address(usize),
-    Quantity(i32),
+    Quantity(i64),
 }
 impl fmt::Display for Val {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -27,9 +27,9 @@ use Val::*;
 
 #[derive(Clone)]
 pub struct Intcode {
-    program: Vec<i32>,
-    input: Vec<i32>,
-    output: Vec<i32>,
+    program: Vec<i64>,
+    input: Vec<i64>,
+    output: Vec<i64>,
     pos: usize,
 }
 
@@ -38,7 +38,7 @@ impl Intcode {
         return Intcode { program: Vec::new(), pos: 0, input: Vec::new(), output: Vec::new() };
     }
 
-    pub fn init(prog: Vec<i32>) -> Intcode {
+    pub fn init(prog: Vec<i64>) -> Intcode {
         return Intcode { program: prog, pos: 0, input: Vec::new(), output: Vec::new() };
     }
 
@@ -80,8 +80,16 @@ impl Intcode {
         return true;
     }
 
-    pub fn pipe(&mut self, val: i32) { self.input.push(val); }
-    pub fn cat(&mut self) -> Vec<i32> { self.output.clone() }
+    pub fn pipe(&mut self, val: i64) { self.input.push(val); }
+    pub fn cat(&mut self) -> Vec<i64> { self.output.clone() }
+    pub fn has_output(&mut self) -> bool { self.output.len() > 0 }
+    pub fn shift_output(&mut self) -> Option<i64> {
+        if self.output.len() > 0 {
+            return Some(self.output.remove(0))
+        } else {
+            return None
+        }
+    }
 
     fn add(&mut self, param: Vec<Val>) {
         if let (Some(a), Some(b), Some(Address(c))) = (param.get(0), param.get(1), param.get(2)) {
@@ -148,22 +156,22 @@ impl Intcode {
         }
     }
 
-    pub fn get(&self, x: &Val) -> i32 {
+    pub fn get(&self, x: &Val) -> i64 {
         match x {
             Address(i) => self.program[*i],
             Quantity(v) => *v,
         }
     }
-    pub fn set(&mut self, i: &Val, val: i32) {
+    pub fn set(&mut self, i: &Val, val: i64) {
         if let Address(addr) = i {
             self.program[*addr] = val
         } else {
             panic!("Expected address, found '{}' instead", i)
         }
     }
-    pub fn push(&mut self, val: i32) { self.program.push(val) }
+    pub fn push(&mut self, val: i64) { self.program.push(val) }
 
-    fn consume(&mut self, mut mode: i32, n: usize) -> Vec<Val> {
+    fn consume(&mut self, mut mode: i64, n: usize) -> Vec<Val> {
         let mut rv = Vec::new();
         for i in 1..=n {
             let m = mode % 10;
