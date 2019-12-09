@@ -2,9 +2,13 @@
 use std::fmt;
 use std::fs;
 
+use std::ops::{Index,IndexMut};
+
+type IntcodeWord = i64;
+
 pub enum Val {
     Address(usize),
-    Quantity(i64),
+    Quantity(IntcodeWord),
 }
 impl fmt::Display for Val {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -27,19 +31,20 @@ use Val::*;
 
 #[derive(Clone)]
 pub struct Intcode {
-    program: Vec<i64>,
-    input: Vec<i64>,
-    output: Vec<i64>,
+    program: Vec<IntcodeWord>,
+    input: Vec<IntcodeWord>,
+    output: Vec<IntcodeWord>,
+    relative_base: usize,
     pos: usize,
 }
 
 impl Intcode {
     pub fn new() -> Intcode {
-        return Intcode { program: Vec::new(), pos: 0, input: Vec::new(), output: Vec::new() };
+        return Intcode { program: Vec::new(), pos: 0, relative_base: 0, input: Vec::new(), output: Vec::new() };
     }
 
-    pub fn init(prog: Vec<i64>) -> Intcode {
-        return Intcode { program: prog, pos: 0, input: Vec::new(), output: Vec::new() };
+    pub fn init(prog: Vec<IntcodeWord>) -> Intcode {
+        return Intcode { program: prog, pos: 0, relative_base: 0, input: Vec::new(), output: Vec::new() };
     }
 
     pub fn load(fname: &String) -> Intcode {
@@ -55,14 +60,14 @@ impl Intcode {
         return ic;
     }
 
-    pub fn is_halted(&self) -> bool { 99 == self.program[self.pos] }
+    pub fn is_halted(&self) -> bool { 99 == self[self.pos] }
 
     pub fn run(&mut self) {
         while self.step() { }
     }
 
     pub fn step(&mut self) -> bool {
-        let code = self.program[self.pos];
+        let code = self[self.pos];
         let (mode, code) = (code / 100, code % 100);
         match code {
             1 => { let v = self.consume(mode, 3); self.add(v) },
@@ -73,6 +78,7 @@ impl Intcode {
             6 => { let v = self.consume(mode, 2); self.jump_if_false(v) },
             7 => { let v = self.consume(mode, 3); self.lt(v) },
             8 => { let v = self.consume(mode, 3); self.eq(v) },
+            9 => { let v = self.consume(mode, 1); self.shift_relative_base(v) },
 
             99 => return false,
             x_ => panic!("Unknown command at position {}: {} ({})", self.pos, x_, self),
@@ -80,10 +86,10 @@ impl Intcode {
         return true;
     }
 
-    pub fn pipe(&mut self, val: i64) { self.input.push(val); }
-    pub fn cat(&mut self) -> Vec<i64> { self.output.clone() }
+    pub fn pipe(&mut self, val: IntcodeWord) { self.input.push(val); }
+    pub fn cat(&mut self) -> Vec<IntcodeWord> { self.output.clone() }
     pub fn has_output(&mut self) -> bool { self.output.len() > 0 }
-    pub fn shift_output(&mut self) -> Option<i64> {
+    pub fn shift_output(&mut self) -> Option<IntcodeWord> {
         if self.output.len() > 0 {
             return Some(self.output.remove(0))
         } else {
@@ -93,14 +99,18 @@ impl Intcode {
 
     fn add(&mut self, param: Vec<Val>) {
         if let (Some(a), Some(b), Some(Address(c))) = (param.get(0), param.get(1), param.get(2)) {
-            self.program[*c] = self.get(a) + self.get(b);
+            if let Some(rv) = self.get(a).checked_add(self.get(b)) {
+                self[*c] = rv;
+            } else { panic!("Overflow in add()") }
         } else {
             panic!("Invalid add(). Expected: Val, Val, Address, found '{:?}' instead", param)
         }
     }
     fn mul(&mut self, param: Vec<Val>) {
         if let (Some(a), Some(b), Some(Address(c))) = (param.get(0), param.get(1), param.get(2)) {
-            self.program[*c] = self.get(a) * self.get(b);
+            if let Some(rv) = self.get(a).checked_mul(self.get(b)) {
+                self[*c] = rv;
+            } else { panic!("Overflow in mul()") }
         } else {
             panic!("Invalid mul(). Expected: Val, Val, Address, found '{:?}' instead", param)
         }
@@ -108,7 +118,7 @@ impl Intcode {
 
     fn read(&mut self, param: Vec<Val>) {
         if let Some(Address(a)) = param.get(0) {
-            self.program[*a] = self.input.remove(0)
+            self[*a] = self.input.remove(0)
         } else {
             panic!("Invalid mul(). Expected: Val, Val, Address, found '{:?}' instead", param)
         }
@@ -143,49 +153,89 @@ impl Intcode {
 
     fn lt(&mut self, param: Vec<Val>) {
         if let (Some(a), Some(b), Some(Address(c))) = (param.get(0), param.get(1), param.get(2)) {
-            self.program[*c] = if self.get(a) < self.get(b) { 1 } else { 0 };
+            self[*c] = if self.get(a) < self.get(b) { 1 } else { 0 };
         } else {
             panic!("Invalid lt(). Expected: Val, Val, Address, found '{:?}' instead", param)
         }
     }
     fn eq(&mut self, param: Vec<Val>) {
         if let (Some(a), Some(b), Some(Address(c))) = (param.get(0), param.get(1), param.get(2)) {
-            self.program[*c] = if self.get(a) == self.get(b) { 1 } else { 0 };
+            self[*c] = if self.get(a) == self.get(b) { 1 } else { 0 };
         } else {
             panic!("Invalid eq(). Expected: Val, Val, Address, found '{:?}' instead", param)
         }
     }
 
-    pub fn get(&self, x: &Val) -> i64 {
+    fn checked_add_to_relative(&self, val: IntcodeWord) -> usize {
+        let rv = match val {
+            x @ 0..=std::i64::MAX  => self.relative_base.checked_add(x as usize),
+            x @ std::i64::MIN..=-1 => self.relative_base.checked_sub((-x) as usize),
+        };
+        if let Some(new) = rv {
+            return new;
+        } else { panic!("Overflow in relative_base") }
+    }
+
+    fn shift_relative_base(&mut self, param: Vec<Val>) {
+        if let Some(a) = param.get(0) {
+            self.relative_base = self.checked_add_to_relative(self.get(a));
+        } else {
+            panic!("Invalid eq(). Expected: Val, Val, Address, found '{:?}' instead", param)
+        }
+    }
+
+    pub fn get(&self, x: &Val) -> IntcodeWord {
         match x {
-            Address(i) => self.program[*i],
+            Address(i) => self[*i],
             Quantity(v) => *v,
         }
     }
-    pub fn set(&mut self, i: &Val, val: i64) {
+    pub fn set(&mut self, i: &Val, val: IntcodeWord) {
         if let Address(addr) = i {
-            self.program[*addr] = val
+            self[*addr] = val
         } else {
             panic!("Expected address, found '{}' instead", i)
         }
     }
-    pub fn push(&mut self, val: i64) { self.program.push(val) }
+    pub fn push(&mut self, val: IntcodeWord) { self.program.push(val) }
 
-    fn consume(&mut self, mut mode: i64, n: usize) -> Vec<Val> {
+    fn consume(&mut self, mut mode: IntcodeWord, n: usize) -> Vec<Val> {
         let mut rv = Vec::new();
         for i in 1..=n {
             let m = mode % 10;
             match m {
-                0 => rv.push(Address(self.program[self.pos+i] as usize)),
-                1 => rv.push(Quantity(self.program[self.pos+i])),
+                0 => rv.push(Address(self[self.pos+i] as usize)),
+                1 => rv.push(Quantity(self[self.pos+i])),
+                2 => rv.push(Address(self.checked_add_to_relative(self[self.pos+i]))),
                 _ => panic!("Unexpected mode {}", m),
             };
             mode /= 10;
         }
-        self.pos += n + 1;
+        match self.pos.checked_add(n + 1) {
+            Some(rv) => self.pos = rv,
+            None     => panic!("Program overflow!"),
+        }
         return rv;
     }
 }
+
+impl Index<usize> for Intcode {
+    type Output = IntcodeWord;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        if index < self.program.len() { &self.program[index] } else { &0 }
+    }
+}
+impl IndexMut<usize> for Intcode {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        if index >= self.program.len() {
+            let mut zeroes = vec![0; index + 1 - self.program.len()];
+            self.program.append(&mut zeroes);
+        }
+        return &mut self.program[index]
+    }
+}
+
 impl fmt::Display for Intcode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.program)
@@ -228,4 +278,12 @@ mod tests {
         let mut ic = Intcode::init(vec![ 77,0,0,0,99 ]);
         ic.run();
     }
+
+    #[test]
+    fn day09() {
+        let mut ic = Intcode::init(vec![ 109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99 ]);
+        ic.run();
+        assert_eq!(ic.cat(), vec![ 109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99 ]);// Example 1
+    }
+
 }
