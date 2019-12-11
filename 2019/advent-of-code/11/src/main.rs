@@ -15,8 +15,13 @@ use std::collections::HashMap;
 use std::fmt;
 
 
+#[derive(Clone, Copy)]
 enum Color { Black, White }
+
+#[derive(Clone, Copy)]
 enum Direction { Up, Down, Left, Right }
+
+#[derive(Clone, Copy)]
 enum Turn { Left, Right }
 
 
@@ -84,8 +89,8 @@ impl Hull {
 
     pub fn color_at(&self, pt: &Point) -> Color {
         match self.paint.get(&pt) {
-            Some(Color::White) => Color::White,
-            _                  => Color::Black,
+            Some(x) => *x,
+            _       => Color::Black,
         }
     }
 
