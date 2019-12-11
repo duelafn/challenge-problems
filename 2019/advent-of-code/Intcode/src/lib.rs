@@ -88,6 +88,7 @@ impl Intcode {
 
     pub fn pipe(&mut self, val: IntcodeWord) { self.input.push(val); }
     pub fn cat(&mut self) -> Vec<IntcodeWord> { self.output.clone() }
+    pub fn output_len(&mut self) -> usize { self.output.len() }
     pub fn has_output(&mut self) -> bool { self.output.len() > 0 }
     pub fn shift_output(&mut self) -> Option<IntcodeWord> {
         if self.output.len() > 0 {
