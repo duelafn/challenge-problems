@@ -1,0 +1,8 @@
+[package]
+name = "10"
+version = "1.0.0"
+edition = "2018"
+
+[dependencies]
+clap = ""
+num-integer = ""
