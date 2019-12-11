@@ -85,8 +85,8 @@ impl Map {
 
                 if dx.gcd(&dy) == 1 { // (0,0) excluded since gcd is 0  (see tests)
                     let dir = self.direction(&dx, &dy);
-                    let mut mult = 1;
-                    let mut rotation = 1;
+                    let mut mult = 1;      // current multiple of ratio
+                    let mut rotation = 1;  // laser rotation number of hit
                     let mut ch = self.get(i+dx, j+dy);
                     while ch != '?' {
                         if ch == '#' {
