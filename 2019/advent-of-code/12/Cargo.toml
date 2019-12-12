@@ -1,0 +1,10 @@
+[package]
+name = "12"
+version = "1.0.0"
+edition = "2018"
+
+[dependencies]
+clap = ""
+itertools = ""
+num-integer = ""
+regex = ""
