@@ -75,6 +75,12 @@ impl FromStr for Moon {
 
 fn step(moons: &mut Vec<Moon>) {
     // This is stupid!
+    //
+    // Our gravitate() requires self to be mutable but its argyment to be
+    // non-mutable. Rust apparently locks the whole vec as mut/non-mut
+    // which prevents us from simultaneously doing a = vec.get(i), b =
+    // vec.get_mut(j). If we access the elements through a slice, however,
+    // rust can lock each slice separately, hence the song and dance here.
     for pair in (0..moons.len()).combinations(2) { // .combinations() Clones iterator elements
         let (i, j) = if pair[0] < pair[1] { (pair[0], pair[1]) } else { (pair[1], pair[0]) }; // Probably ordered but just in case
         let (a, b) = moons.split_at_mut(j); // WTF Rust!
