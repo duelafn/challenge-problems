@@ -4,8 +4,8 @@ extern crate intcode;
 
 // Time Start: Fri, 13 Dec 2019 09:13:42 -0500
 // Time Finish 1: Fri, 13 Dec 2019 09:38:12 -0500 (24 minutes, 30 seconds)
-// Time Finish 2:
-// Time Total:
+// Time Finish 2: Fri, 13 Dec 2019 10:41:59 -0500 (1 hour, 3 minutes, 47 seconds)
+// Time Total: 1 hour, 28 minutes, 17 seconds
 
 use clap::{Arg, App};
 
