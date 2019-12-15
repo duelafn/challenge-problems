@@ -4,8 +4,8 @@ extern crate intcode;
 
 // Time Start: Sun, 15 Dec 2019 00:56:30 -0500
 // Time Finish 1: Sun, 15 Dec 2019 03:10:37 -0500 (2 hours, 14 minutes, 7 seconds)
-// Time Finish 2:
-// Time Total:
+// Time Finish 2: Sun, 15 Dec 2019 03:42:57 -0500 (32 minutes, 20 seconds)
+// Time Total: 2 hours, 46 minutes, 27 seconds
 
 use clap::{Arg, App};
 
@@ -115,6 +115,13 @@ impl Droid {
         }
     }
 
+    pub fn fill_map(&mut self) -> Option<()> {
+        loop {
+            let (_, _, path) = self.find_nearest(self.pos.0, self.pos.1, |_x, _y, ch| ch == ' ')?; // position closest to current
+            self.follow_path(&path)?;
+        }
+    }
+
     // Find a path through the known universe between the two given points.
     pub fn find_path(&self, x0: i64, y0: i64, x1: i64, y1: i64) -> Option<Vec<u8>> {
         let (_, _, path) = self.find_nearest(x0, y0, |x, y, _ch| x == x1 && y == y1)?;
@@ -137,7 +144,7 @@ impl Droid {
             if test(x, y, self.item_at(x, y)) {
                 return Some((x, y, path));
             }
-            if '.' == self.item_at(x, y) {
+            if match self.item_at(x, y) { '.' | 'O' => true, _ => false } {
                 for i in 0..4 {
                     let (a, b, dir) = step[i];
                     if !seen.contains(&(x+a, y+b)) {
@@ -168,6 +175,35 @@ impl fmt::Display for Droid {
 }
 
 
+fn time_fill_oxygen(x0: i64, y0: i64, map: &mut HashMap<(i64, i64), char>) -> u64 {
+    let mut time = 0_u64;
+    let mut todo: VecDeque<(i64, i64, u64)> = VecDeque::new();
+    let mut step: Vec<(i64, i64)> = Vec::new();
+    step.push((0,  1));
+    step.push((0, -1));
+    step.push((-1, 0));
+    step.push(( 1, 0));
+
+    todo.push_back((x0, y0, 0));
+    loop {
+        if let Some((x, y, t)) = todo.pop_front() {
+            time = t;
+            for i in 0..4 {
+                let (dx, dy) = step[i];
+                let (a, b) = (x+dx, y+dy);
+                match map.get(&(a, b)) {
+                    Some('.') => {
+                        todo.push_back((a, b, t + 1));
+                        map.insert((a, b), 'O');
+                    },
+                    _ => (),
+                }
+            }
+        } else { break; }
+    }
+    return time;
+}
+
 
 fn main() {
     let matches = App::new("Advent of Code 2019, Day 15")
@@ -180,8 +216,16 @@ fn main() {
     let mut droid = Droid::new(Intcode::load(&fname));
     if let Some(path) = droid.search_for_oxygen_system() {
         println!("{}", droid);
-        println!("Found path length {}", path.len());
+        println!("Part 1: Found path length {}", path.len());
     } else {
         println!("Bummer");
     }
+
+    // Part 2: a bit less autonomous
+    droid.fill_map();
+    println!("{}", droid);
+    // Get oxygen system location the silly way:
+    let (x0, y0, _) = droid.find_nearest(0, 0, |_, _, ch| ch == 'O').unwrap_or_else(|| panic!("Lost the oxygen system again!"));
+    // Run the simulation outside the bot object.
+    println!("Part 2: Time to fill section: {}", time_fill_oxygen(x0, y0, &mut droid.map.clone()));
 }
