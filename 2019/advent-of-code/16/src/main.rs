@@ -3,8 +3,8 @@ extern crate clap;
 
 // Time Start: Mon, 16 Dec 2019 07:42:46 -0500
 // Time Finish 1: Mon, 16 Dec 2019 08:30:39 -0500 (47 minutes, 53 seconds)
-// Time Finish 2:
-// Time Total:
+// Time Finish 2: Mon, 16 Dec 2019 11:06:30 -0500 (2 hours, 35 minutes, 51 seconds)
+// Time Total: 3 hours, 23 minutes, 44 seconds
 
 use std::fs;
 
@@ -38,6 +38,8 @@ fn fft(vec: &Vec<i32>, pat: &[i32], n: u32, offset: usize) -> Vec<i32> {
     return new;
 }
 
+// Part 2 is a significantly degenerate case of part 1. Calculating the
+// tail end (over half-way through) is trivial.
 fn fft_tail(vec: &Vec<i32>, n: u32, tail_len: usize) -> i32 {
     let len = vec.len();
     let mut new = vec.clone();
@@ -91,8 +93,7 @@ fn main() {
 
     //    first 7 bits: 5973181
     // repeated length: 6500000
-    // Thus, the "pattern" never applies to the relevant tail. Just the
-    // +1's, but we MUST get the offset exactly right.
+    // Thus, the "pattern" never applies to the relevant tail. Just the +1's
     let mut vec2 = repeat(&vec, 10000);
     let offset = num_at(&vec, 0, 7) as usize;
     let tail = vec2.split_off(offset);
