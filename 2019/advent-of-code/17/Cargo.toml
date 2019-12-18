@@ -1,0 +1,8 @@
+[package]
+name = "17"
+version = "1.0.0"
+edition = "2018"
+
+[dependencies]
+clap = ""
+intcode = { path = "../Intcode" }

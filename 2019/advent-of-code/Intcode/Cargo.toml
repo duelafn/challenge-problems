@@ -2,3 +2,6 @@
 [package]
 name = "intcode"
 version = "1.0.0"
+
+[dependencies]
+num-traits=""

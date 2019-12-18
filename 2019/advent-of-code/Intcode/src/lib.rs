@@ -1,4 +1,6 @@
 
+pub mod util;
+
 use std::fmt;
 use std::fs;
 
