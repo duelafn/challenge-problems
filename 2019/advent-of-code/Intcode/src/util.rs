@@ -105,6 +105,7 @@ impl Direction {
 }
 
 
+#[derive(Clone)]
 pub struct Robot {
     pos: (i64, i64),
     dir: Direction,
