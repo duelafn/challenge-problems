@@ -4,8 +4,8 @@ extern crate intcode;
 
 // Time Start: Sat, 21 Dec 2019 08:43:08 -0500
 // Time Finish 1: Sat, 21 Dec 2019 11:12:30 -0500 (2 hours, 29 minutes, 22 seconds)
-// Time Finish 2:
-// Time Total:
+// Time Finish 2: Sat, 21 Dec 2019 11:24:25 -0500 (11 minutes, 55 seconds)
+// Time Total: 2 hours, 41 minutes, 17 seconds
 
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -59,6 +59,7 @@ pub trait Day18Chart {
     fn load(fname: &str) -> (i64, i64, Chart, u32);
     fn reachable(&self, x: i64, y: i64, keys: Keys) -> Vec<(i64, i64, char, u64)>;
     fn catch_em_all(&self, x: i64, y: i64, keys: Keys) -> u64;
+    fn catch_em_all_4(&self, x: i64, y: i64, keys: Keys) -> u64;
 }
 
 impl Day18Chart for Chart {
@@ -144,6 +145,49 @@ impl Day18Chart for Chart {
         }
         return best;
     }
+
+    fn catch_em_all_4(&self, x: i64, y: i64, keys: Keys) -> u64 {
+        let mut todo = VecDeque::new();
+        let mut best = std::u64::MAX;
+        let mut seen = HashMap::new();
+
+        todo.push_back((x+1, y+1, x+1, y-1, x-1, y+1, x-1, y-1, keys, 0_u64));
+        while let Some((x0, y0, x1, y1, x2, y2, x3, y3, s, d)) = todo.pop_front() {
+            if d >= best { continue; }
+            if let Some(l) = seen.get(&(x0, y0, x1, y1, x2, y2, x3, y3, s)) { // Can already get here with this key set
+                if d >= *l { continue; }
+            }
+            seen.insert((x0, y0, x1, y1, x2, y2, x3, y3, s), d);
+
+            // Keep cheapest if done
+            if s.0 == 0 && d < best {
+                best = d; println!("Found length {}", d);
+                continue;
+            }
+
+            for (a, b, ch, d2) in self.reachable(x0, y0, s) {
+                let mut s2 = s; s2.add_key(ch);
+                todo.push_back((a, b, x1, y1, x2, y2, x3, y3, s2, d+d2));
+            }
+
+            for (a, b, ch, d2) in self.reachable(x1, y1, s) {
+                let mut s2 = s; s2.add_key(ch);
+                todo.push_back((x0, y0, a, b, x2, y2, x3, y3, s2, d+d2));
+            }
+
+            for (a, b, ch, d2) in self.reachable(x2, y2, s) {
+                let mut s2 = s; s2.add_key(ch);
+                todo.push_back((x0, y0, x1, y1, a, b, x3, y3, s2, d+d2));
+            }
+
+            for (a, b, ch, d2) in self.reachable(x3, y3, s) {
+                let mut s2 = s; s2.add_key(ch);
+                todo.push_back((x0, y0, x1, y1, x2, y2, a, b, s2, d+d2));
+            }
+        }
+        return best;
+    }
+
 }
 
 fn main() {
@@ -161,4 +205,12 @@ fn main() {
 
     let dist = chart.catch_em_all(x, y, Keys::new(num));
     println!("Part 1: length {}", dist);
+
+    let (x, y, mut chart, num) = Chart::load(&fname);
+    for (dx, dy) in &[(0,1), (0,-1), (1,0), (-1,0)] {
+        chart.put(x+dx, y+dy, '#');
+    }
+
+    let dist = chart.catch_em_all_4(x, y, Keys::new(num));
+    println!("Part 2: length {}", dist);
 }
