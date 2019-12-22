@@ -148,6 +148,7 @@ impl Chart {
         }
     }
 
+    pub fn get(&self, x: i64, y: i64) -> Option<&char> { self.map.get(&(x,y)) }
     pub fn put(&mut self, x: i64, y: i64, obj: char) {
         self.bbox.update(x, y);
         self.map.insert((x, y), obj);
