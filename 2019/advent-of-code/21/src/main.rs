@@ -4,8 +4,8 @@ extern crate intcode;
 
 // Time Start: Mon, 23 Dec 2019 08:38:23 -0500
 // Time Finish 1: Mon, 23 Dec 2019 09:39:50 -0500 (1 hour, 1 minute, 27 seconds)
-// Time Finish 2:
-// Time Total:
+// Time Finish 2: Mon, 23 Dec 2019 17:26:44 -0500 (7 hours, 46 minutes, 54 seconds)
+// Time Total: 8 hours, 48 minutes, 21 seconds
 
 use clap::{Arg, App};
 
@@ -19,9 +19,8 @@ fn main() {
         .get_matches();
     let fname = String::from(matches.value_of("FILE").unwrap_or("21.in"));
 
-    let mut ic = Intcode::load(&fname);
-
     // J = D & !(C&B&A)
+    let mut ic = Intcode::load(&fname);
     let jumpcode = "
 NOT T J
 AND A J
@@ -36,4 +35,27 @@ WALK
     ic.run();
 
     println!("{:?}", ic.cat());
+
+// @...-?..-
+//  ABCDEFGHI
+    // J = D & (H|E) & !(C&B&A)
+    let mut ic = Intcode::load(&fname);
+    let jumpcode = "
+NOT T J
+AND A J
+AND B J
+AND C J
+NOT J J
+OR  H T
+OR  E T
+AND T J
+AND D J
+RUN
+".trim_start();
+
+    ic.ascii_in(&String::from(jumpcode));
+    ic.run();
+
+    println!("{:?}", ic.cat());
+    // println!("{}", ic.ascii_out());
 }
