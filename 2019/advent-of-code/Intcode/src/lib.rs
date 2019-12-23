@@ -107,6 +107,15 @@ impl Intcode {
         }
     }
 
+    pub fn ascii_in(&mut self, input: &String) {
+        for ch in input.chars() {
+            self.pipe(ch as i64);
+        }
+    }
+    pub fn ascii_out(&mut self) -> String {
+        self.output.iter().map(|c| std::char::from_u32(*c as u32).unwrap_or_else(|| panic!("Expected ASCII"))).collect::<String>()
+    }
+
     fn add(&mut self, param: Vec<Val>) {
         if let (Some(a), Some(b), Some(Address(c))) = (param.get(0), param.get(1), param.get(2)) {
             if let Some(rv) = self.get(a).checked_add(self.get(b)) {
