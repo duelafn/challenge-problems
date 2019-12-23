@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
 use std::fmt;
+use std::fs;
 
 
 #[derive(Copy, Clone)]
@@ -35,7 +36,7 @@ impl fmt::Display for BBox {
 }
 
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum Direction { North, South, East, West }
 const ALL_DIRECTIONS: [Direction; 4] = [Direction::North, Direction::South, Direction::East, Direction::West];
 impl Direction {
@@ -103,6 +104,16 @@ impl Direction {
         }
     }
 }
+impl fmt::Display for Direction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", match self {
+            Direction::North => "N",
+            Direction::South => "S",
+            Direction::East  => "E",
+            Direction::West  => "W",
+        })
+    }
+}
 
 
 #[derive(Clone)]
@@ -132,13 +143,30 @@ impl Robot {
 pub struct Chart {
     pub map: HashMap<(i64, i64), char>,
     pub bbox: BBox,
+    pub portals: HashMap<(i64, i64), (i64, i64)>,
+    pub portal_symbol: char,
 }
 impl Chart {
     pub fn new() -> Chart {
         Chart {
             map: HashMap::new(),
             bbox: BBox::new(),
+            portal_symbol: '^',
+            portals: HashMap::new(),
         }
+    }
+
+    pub fn load(fname: &str) -> Chart {
+        let mut chart = Chart::new();
+        let contents = fs::read_to_string(fname)
+            .unwrap_or_else(|err| panic!("Error reading {}: {}", fname, err));
+
+        for (j, line) in contents.trim_end_matches('\n').split('\n').enumerate() {
+            for (i, ch) in line.chars().enumerate() {
+                chart.put(i as i64, j as i64, ch);
+            }
+        }
+        return chart;
     }
 
     pub fn item_at(&self, x: i64, y: i64) -> char {
@@ -146,6 +174,27 @@ impl Chart {
             Some(x) => *x,
             None    => ' ',
         }
+    }
+
+    pub fn locate(&self, ch: char) -> Option<(i64, i64)> {
+        for (key, val) in self.map.iter() {
+            if *val == ch {
+                return Some(*key);
+            }
+        }
+        return None;
+    }
+
+    pub fn follow_portal(&self, x0: i64, y0: i64) -> (i64, i64) {
+        match self.portals.get(&(x0,y0)) {
+            Some(&(x, y)) => (x,y),
+            None    => panic!("Tried to follow non-existant portal at ({}, {})", x0, y0),
+        }
+    }
+    pub fn add_portal(&mut self, x0: i64, y0: i64, x1: i64, y1: i64) {
+        let sym = self.portal_symbol;
+        self.put(x0, y0, sym);
+        self.portals.insert((x0, y0), (x1, y1));
     }
 
     pub fn get(&self, x: i64, y: i64) -> Option<&char> { self.map.get(&(x,y)) }
@@ -167,11 +216,15 @@ impl Chart {
             }
             if valid(x, y, spot) {
                 for dir in Direction::each() {
-                    let (a, b) = dir.xy();
-                    if !seen.contains(&(x+a, y+b)) {
+                    let (mut a, mut b) = dir.step(x, y);
+                    if self.item_at(a, b) == self.portal_symbol {
+                        let (aa, bb) = self.follow_portal(a, b);
+                        a = aa; b = bb;
+                    }
+                    if !seen.contains(&(a, b)) {
                         let mut newpath = path.clone();
                         newpath.push(*dir);
-                        todo.push_back((x+a, y+b, newpath));
+                        todo.push_back((a, b, newpath));
                     }
                 }
             }
