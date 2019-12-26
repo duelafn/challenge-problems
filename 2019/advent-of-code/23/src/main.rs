@@ -4,8 +4,8 @@ extern crate intcode;
 
 // Time Start: Thu, 26 Dec 2019 15:07:33 -0500
 // Time Finish 1: Thu, 26 Dec 2019 15:47:02 -0500 (39 minutes, 29 seconds)
-// Time Finish 2:
-// Time Total:
+// Time Finish 2: Thu, 26 Dec 2019 16:03:47 -0500 (16 minutes, 45 seconds)
+// Time Total: 56 minutes, 14 seconds
 
 use std::collections::HashSet;
 
