@@ -39,15 +39,16 @@ pub struct Intcode {
     relative_base: usize,
     pos: usize,
     nbread: Option<IntcodeWord>,
+    nbread_count: usize,
 }
 
 impl Intcode {
     pub fn new() -> Intcode {
-        return Intcode { program: Vec::new(), pos: 0, relative_base: 0, input: Vec::new(), output: Vec::new(), nbread: None };
+        return Intcode { program: Vec::new(), pos: 0, relative_base: 0, input: Vec::new(), output: Vec::new(), nbread: None, nbread_count: 0 };
     }
 
     pub fn init(prog: Vec<IntcodeWord>) -> Intcode {
-        return Intcode { program: prog, pos: 0, relative_base: 0, input: Vec::new(), output: Vec::new(), nbread: None };
+        return Intcode { program: prog, pos: 0, relative_base: 0, input: Vec::new(), output: Vec::new(), nbread: None, nbread_count: 0 };
     }
 
     pub fn load(fname: &String) -> Intcode {
@@ -93,6 +94,7 @@ impl Intcode {
     pub fn pipe(&mut self, val: IntcodeWord) { self.input.push(val); }
     pub fn input_len(&mut self) -> usize { self.input.len() }
     pub fn nbinput(&mut self, val: Option<IntcodeWord>) { self.nbread = val.clone() }
+    pub fn nbread_count(&self) -> usize { self.nbread_count }
     pub fn set_input(&mut self, val: IntcodeWord) {
         if self.input.len() > 0 {
             self.input[0] = val;
@@ -143,8 +145,10 @@ impl Intcode {
     fn read(&mut self, param: Vec<Val>) {
         if let Some(Address(a)) = param.get(0) {
             if self.input.len() > 0 {
+                self.nbread_count = 0;
                 self[*a] = self.input.remove(0);
             } else if let Some(dflt) = self.nbread {
+                self.nbread_count += 1;
                 self[*a] = dflt;
             } else {
                 panic!("Read from empty input queue!");
