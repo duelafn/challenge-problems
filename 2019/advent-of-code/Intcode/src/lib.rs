@@ -38,15 +38,16 @@ pub struct Intcode {
     output: Vec<IntcodeWord>,
     relative_base: usize,
     pos: usize,
+    nbread: Option<IntcodeWord>,
 }
 
 impl Intcode {
     pub fn new() -> Intcode {
-        return Intcode { program: Vec::new(), pos: 0, relative_base: 0, input: Vec::new(), output: Vec::new() };
+        return Intcode { program: Vec::new(), pos: 0, relative_base: 0, input: Vec::new(), output: Vec::new(), nbread: None };
     }
 
     pub fn init(prog: Vec<IntcodeWord>) -> Intcode {
-        return Intcode { program: prog, pos: 0, relative_base: 0, input: Vec::new(), output: Vec::new() };
+        return Intcode { program: prog, pos: 0, relative_base: 0, input: Vec::new(), output: Vec::new(), nbread: None };
     }
 
     pub fn load(fname: &String) -> Intcode {
@@ -88,7 +89,10 @@ impl Intcode {
         return true;
     }
 
+    pub fn peek(&mut self) -> Vec<IntcodeWord> { self.input.clone() }
     pub fn pipe(&mut self, val: IntcodeWord) { self.input.push(val); }
+    pub fn input_len(&mut self) -> usize { self.input.len() }
+    pub fn nbinput(&mut self, val: Option<IntcodeWord>) { self.nbread = val.clone() }
     pub fn set_input(&mut self, val: IntcodeWord) {
         if self.input.len() > 0 {
             self.input[0] = val;
@@ -96,6 +100,7 @@ impl Intcode {
             self.input.push(val);
         }
     }
+
     pub fn cat(&mut self) -> Vec<IntcodeWord> { self.output.clone() }
     pub fn output_len(&mut self) -> usize { self.output.len() }
     pub fn has_output(&mut self) -> bool { self.output.len() > 0 }
@@ -137,7 +142,13 @@ impl Intcode {
 
     fn read(&mut self, param: Vec<Val>) {
         if let Some(Address(a)) = param.get(0) {
-            self[*a] = self.input.remove(0)
+            if self.input.len() > 0 {
+                self[*a] = self.input.remove(0);
+            } else if let Some(dflt) = self.nbread {
+                self[*a] = dflt;
+            } else {
+                panic!("Read from empty input queue!");
+            }
         } else {
             panic!("Invalid mul(). Expected: Val, Val, Address, found '{:?}' instead", param)
         }
