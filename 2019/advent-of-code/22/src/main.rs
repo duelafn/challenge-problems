@@ -179,6 +179,8 @@ fn main() {
     }
 
     if let Some(idx) = cards.iter().position(|&x| x == 2019) {
+        assert_eq!(idx, 6831);
+        assert_eq!(xform1.eval(2019), 6831);
         println!("Step 1: 2019 is at index {} == {}", idx, xform1.eval(2019));
     } else {
         println!("Short test: {:?}", cards);
@@ -186,6 +188,7 @@ fn main() {
 
     xform2 = xform2.pow(101741582076661);
     println!("Step 2: 2020 is at index {}", xform2.eval(2020));
+    assert_eq!(xform2.invert(2020), 81781678911487);
     println!("Step 2: {} is at index 2020", xform2.invert(2020));
 }
 
