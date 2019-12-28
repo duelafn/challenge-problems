@@ -140,11 +140,13 @@ impl Robot {
 }
 
 
+#[derive(Clone)]
 pub struct Chart {
     pub map: HashMap<(i64, i64), char>,
     pub bbox: BBox,
     pub portals: HashMap<(i64, i64), (i64, i64)>,
     pub portal_symbol: char,
+    pub print_flipped: bool,
 }
 impl Chart {
     pub fn new() -> Chart {
@@ -153,6 +155,7 @@ impl Chart {
             bbox: BBox::new(),
             portal_symbol: '^',
             portals: HashMap::new(),
+            print_flipped: false,
         }
     }
 
@@ -167,6 +170,23 @@ impl Chart {
             }
         }
         return chart;
+    }
+
+    pub fn count(&self, wanted: impl Fn(i64, i64, char) -> bool) -> i64 {
+        let mut count = 0;
+        for ((x, y), ch) in self.map.iter() {
+            if wanted(*x, *y, *ch) {
+                count += 1;
+            }
+        }
+        return count;
+    }
+
+    pub fn count_at(&self, x: i64, y: i64, ch: char) -> i64 {
+        match self.map.get(&(x,y)) {
+            Some(c) => if *c == ch { 1 } else { 0 },
+            None    => 0,
+        }
     }
 
     pub fn item_at(&self, x: i64, y: i64) -> char {
@@ -235,11 +255,20 @@ impl Chart {
 }
 impl fmt::Display for Chart {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for y in (self.bbox.ymin()..=self.bbox.ymax()).rev() {
-            for x in self.bbox.xmin()..=self.bbox.xmax() {
-                write!(f, "{}", self.item_at(x, y))?;
+        if self.print_flipped {
+            for y in self.bbox.ymin()..=self.bbox.ymax() {
+                for x in self.bbox.xmin()..=self.bbox.xmax() {
+                    write!(f, "{}", self.item_at(x, y))?;
+                }
+                write!(f, "{}", "\n")?;
             }
-            write!(f, "{}", "\n")?;
+        } else {
+            for y in (self.bbox.ymin()..=self.bbox.ymax()).rev() {
+                for x in self.bbox.xmin()..=self.bbox.xmax() {
+                    write!(f, "{}", self.item_at(x, y))?;
+                }
+                write!(f, "{}", "\n")?;
+            }
         }
         Ok(())
     }
