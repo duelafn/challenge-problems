@@ -76,7 +76,12 @@ impl Intcode {
         match code {
             1 => { let v = self.consume(mode, 3); self.add(v) },
             2 => { let v = self.consume(mode, 3); self.mul(v) },
-            3 => { let v = self.consume(mode, 1); self.read(v) },
+            3 => {
+                // Check for input available, return if blocking on input
+                if self.input.is_empty() && self.nbread.is_none() { return false; }
+                let v = self.consume(mode, 1);
+                self.read(v)
+            },
             4 => { let v = self.consume(mode, 1); self.write(v) },
             5 => { let v = self.consume(mode, 2); self.jump_if_true(v) },
             6 => { let v = self.consume(mode, 2); self.jump_if_false(v) },
@@ -113,6 +118,9 @@ impl Intcode {
             return None
         }
     }
+    pub fn clear_output(&mut self) {
+        self.output.clear();
+    }
 
     pub fn ascii_in(&mut self, input: &String) {
         for ch in input.chars() {
@@ -120,7 +128,15 @@ impl Intcode {
         }
     }
     pub fn ascii_out(&mut self) -> String {
-        self.output.iter().map(|c| std::char::from_u32(*c as u32).unwrap_or_else(|| panic!("Expected ASCII"))).collect::<String>()
+        let mut rv = String::new();
+        for &num in self.output.iter() {
+            if num > 0 && num < 127 {
+                rv.push(std::char::from_u32(num as u32).unwrap_or_else(|| panic!("Expected ASCII")));
+            } else {
+                rv.push_str(&format!("{}", num));
+            }
+        }
+        return rv;
     }
 
     fn add(&mut self, param: Vec<Val>) {

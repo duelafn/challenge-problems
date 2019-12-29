@@ -126,7 +126,7 @@ impl Robot {
         Robot { pos: (0,0), dir: Direction::North }
     }
 
-    pub fn pos(&mut self) -> (i64, i64) { self.pos }
+    pub fn pos(&self) -> (i64, i64) { self.pos }
     pub fn set_pos(&mut self, x: i64, y: i64) { self.pos = (x, y); }
 
     pub fn direction(&mut self) -> Direction { self.dir }

@@ -41,6 +41,7 @@ start:
 
 step1:
 	perl -pi -E "$$SET_STEP1" ${DD}/src/main.rs
+	git add -u
 	git add ${DD}
 
 step2:
