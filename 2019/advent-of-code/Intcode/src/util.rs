@@ -69,16 +69,6 @@ impl Direction {
         }
     }
 
-    // xY: y-axis inversion
-    pub fn xY(&self) -> (i64, i64) {
-        match self {
-            Direction::North => (0, -1),
-            Direction::South => (0, 1),
-            Direction::East  => (1, 0),
-            Direction::West  => (-1, 0),
-        }
-    }
-
     pub fn rev(&self) -> Direction {
         match self {
             Direction::North => Direction::South,
