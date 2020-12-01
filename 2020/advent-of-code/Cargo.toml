@@ -1,0 +1,11 @@
+[package]
+name = "advent-of-code-2020"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+clap = ""
+
+[[bin]]
+name="01"
+path = "src/01.rs"
