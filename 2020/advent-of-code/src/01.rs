@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 
 use std::collections::HashMap;
-use std::fs;
 
 use clap::{Arg, App};
 
 
 fn records(fname: &str) -> Vec<i32> {
-    let contents = fs::read_to_string(fname)
+    let contents = std::fs::read_to_string(fname)
         .unwrap_or_else(|err| panic!("Error reading {}: {}", fname, err));
 
     return contents.lines().enumerate().map(
@@ -18,7 +17,7 @@ fn records(fname: &str) -> Vec<i32> {
 }
 
 fn main() {
-    let matches = App::new("Advent of code 2020 Solutions")
+    let matches = App::new("Advent of code 2020, Day 01 Solution")
         .arg(Arg::with_name("FILE")
              .help("Input file to process")
              .index(1))
@@ -33,11 +32,12 @@ fn main() {
         }
     }
 
+    'outer:
     for n in seen.keys() {
         for m in seen.keys() {
             if let Some(_) = seen.get(&(2020-n-m)) {
                 println!("Part 2: Found {}, {}, and {} whose product is {}", n, m, 2020-n-m, n * m * (2020-n-m));
-                std::process::exit(0);
+                break 'outer;
             }
         }
     }
