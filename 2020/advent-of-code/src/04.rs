@@ -57,7 +57,7 @@ impl Passport {
         //     If cm, the number must be at least 150 and at most 193.
         //     If in, the number must be at least 59 and at most 76.
         lazy_static! { static ref RE_HGT: Regex = Regex::new(r"^(\d+)(in|cm)$").unwrap(); }
-        if let Some(cap) = RE_HGT.captures(self.hgt.as_ref().unwrap().as_ref()) {
+        if let Some(cap) = RE_HGT.captures(self.hgt.as_ref().unwrap()) {
             if let Some(num) = cap.get(1) {
                 let ht = num.as_str().parse::<u16>().unwrap_or(0);
                 if let Some(unit) = cap.get(2) {
@@ -72,15 +72,15 @@ impl Passport {
 
         // hcl (Hair Color) - a # followed by exactly six characters 0-9 or a-f.
         lazy_static! { static ref RE_HCL: Regex = Regex::new(r"^#[0-9a-f]{6}$").unwrap(); }
-        if !RE_HCL.is_match(self.hcl.as_ref().unwrap().as_ref()) { return false; }
+        if !RE_HCL.is_match(self.hcl.as_ref().unwrap()) { return false; }
 
         // ecl (Eye Color) - exactly one of: amb blu brn gry grn hzl oth.
         lazy_static! { static ref RE_ECL: Regex = Regex::new(r"^(?:amb|blu|brn|gry|grn|hzl|oth)$").unwrap(); }
-        if !RE_ECL.is_match(self.ecl.as_ref().unwrap().as_ref()) { return false; }
+        if !RE_ECL.is_match(self.ecl.as_ref().unwrap()) { return false; }
 
         // pid (Passport ID) - a nine-digit number, including leading zeroes.
         lazy_static! { static ref RE_PID: Regex = Regex::new(r"^[0-9]{9}$").unwrap(); }
-        if !RE_PID.is_match(self.pid.as_ref().unwrap().as_ref()) { return false; }
+        if !RE_PID.is_match(self.pid.as_ref().unwrap()) { return false; }
 
         return true;
     }

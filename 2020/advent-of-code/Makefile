@@ -4,7 +4,7 @@ DD ?= $(shell date +%d)
 all:
 	cargo build --release
 
-run:
+run: all
 	target/release/${DD}
 
 test:

@@ -8,6 +8,9 @@ clap = ""
 regex = ">= 1"
 lazy_static = ""
 
+[profile.release]
+overflow-checks = true
+
 [[bin]]
 name="01"
 path = "src/01.rs"
@@ -23,4 +26,8 @@ path = "src/03.rs"
 [[bin]]
 name="04"
 path = "src/04.rs"
+
+[[bin]]
+name="05"
+path = "src/05.rs"
 
