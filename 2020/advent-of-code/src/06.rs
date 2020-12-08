@@ -17,8 +17,7 @@ impl std::convert::TryFrom<&str> for Group {
             match ch {
                 'a'..='z' => {
                     if new_entry { members += 1; new_entry = false; }
-                    let count = h.entry(ch).or_insert(0_u32);
-                    *count += 1;
+                    h.entry(ch).and_modify(|count| *count += 1).or_insert(1_u32);
                 },
                 '\n' => { new_entry = true; },
                 _  => { return Err(format!("Unexpected character '{}'", ch)); },
