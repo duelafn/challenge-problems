@@ -200,3 +200,24 @@ fn main() {
     println!("Part 2: {} occupied seats", plan.count(&'#'));
 //     println!("{}", plan);
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test1() {
+        let mut plan = Floorplan::load("11.in");
+        while plan.step1() { }
+        assert_eq!(plan.count(&'#'), 2476);
+    }
+
+    #[test]
+    fn test2() {
+        let mut plan = Floorplan::load("11.in");
+        while plan.step2() { }
+        assert_eq!(plan.count(&'#'), 2257);
+    }
+}
+
