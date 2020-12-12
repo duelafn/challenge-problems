@@ -9,8 +9,9 @@ regex = ">= 1"
 lazy_static = ">= 1"
 petgraph = ">= 0"
 
-[profile.release]
-overflow-checks = true
+# [profile.release]
+# lto = true
+# overflow-checks = true
 
 [lib]
 name = "advent_of_code"
@@ -59,4 +60,8 @@ path = "src/10.rs"
 [[bin]]
 name="11"
 path = "src/11.rs"
+
+[[bin]]
+name="12"
+path = "src/12.rs"
 
