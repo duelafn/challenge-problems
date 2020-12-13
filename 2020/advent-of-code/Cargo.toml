@@ -5,9 +5,10 @@ edition = "2018"
 
 [dependencies]
 clap = ">= 2"
-regex = ">= 1"
 lazy_static = ">= 1"
+num-integer = ">= 0"
 petgraph = ">= 0"
+regex = ">= 1"
 
 # [profile.release]
 # lto = true
@@ -64,4 +65,8 @@ path = "src/11.rs"
 [[bin]]
 name="12"
 path = "src/12.rs"
+
+[[bin]]
+name="13"
+path = "src/13.rs"
 
