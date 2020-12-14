@@ -29,21 +29,21 @@ impl Mask {
     #[inline]
     pub fn apply_v1(&self, v: u64) -> u64 { (v | self.or) & self.and }
 
-// Average of 2206 iterations
-// real    0m    9.106ms
-// user    0m    7.293ms
-// sys     0m    1.735ms
-// cached page faults  1,179
-    pub fn apply_v2_b(&self, v: u64) -> Vec<u64> {
-        let mut rv = vec![0; 2_usize.pow(self.x.len() as u32)];
+// Average of 2105 iterations
+// real    0m    8.900ms
+// user    0m    7.171ms
+// sys     0m    1.648ms
+// cached page faults  1,177
+    pub fn apply_v2(&self, v: u64) -> Vec<u64> {
+        let mut rv = vec![0; 1<<(self.x.len())];
         rv[0] = v | self.or;
         for (i, idx) in self.x.iter().enumerate() {
             let m: u64 = 1 << *idx;
-            let mut end = 2_usize.pow((i+1) as u32) - 1;
-            let mut n = 2_usize.pow(i as u32);
-            while n > 0 {
+            let mut end = (1<<(i+1)) - 1;
+            let mut n = 1<<i;
+            while n > 0 { // about 75000 iterations total
                 n -= 1;
-                rv[end] = rv[n]|m; end -= 1;
+                rv[end] = rv[n]|m;    end -= 1;
                 rv[end] = rv[n]&(!m); end -= 1;
             }
         }
@@ -60,7 +60,7 @@ impl Mask {
 // real    0m    9.68ms
 // user    0m    7.208ms
 // sys     0m    1.779ms
-    pub fn apply_v2(&self, v: u64) -> Vec<u64> {
+    pub fn apply_v2_a(&self, v: u64) -> Vec<u64> {
         let mut rv = vec![ v | self.or ];
         for i in self.x.iter() {
             let mut tmp = Vec::with_capacity(rv.len() * 2);
