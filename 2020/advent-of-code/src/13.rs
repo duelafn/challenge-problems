@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-// use std::collections::HashMap;
 use std::convert::TryFrom;
 
 use clap::{Arg, App};
@@ -8,8 +7,8 @@ use clap::{Arg, App};
 
 #[inline]
 fn div_ceil(a: u64, b: u64) -> u64 {
-    let (d, r) = num_integer::div_rem(a, b);
-    if r > 0 && b > 0 { d + 1 } else { d }
+    let (d, r) = (a / b, a % b);
+    if r != 0 { d + 1 } else { d }
 }
 
 /// Solve: _ y = c + a x  for a, we don't care about _; start at a1 and step by k
