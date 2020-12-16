@@ -32,7 +32,8 @@ fn main() {
         }
         last = seen.insert(num, turn);
     }
-    println!("Part 2: The 30000000th number is {}, hash RAM: {}M, hash time: {}", num, (seen.capacity() * 11 / 10) * (8 + 8 + 8) / 1024/1023, (Instant::now() - t0).as_millis());
+    println!("Part 2: The 30000000th number is {}, hash RAM: {}M, hash time: {}ms", num, (seen.capacity() * 11 / 10) * (8 + 8 + 8) / 1024/1024, (Instant::now() - t0).as_millis());
+    // https://github.com/servo/servo/issues/6908
     // HashMap: (cap() * 11 / 10) * (size(K) + size(V) + size(u64))
 
 
@@ -64,5 +65,5 @@ fn main() {
         last = seen[num];
         seen[num] = turn;
     }
-    println!("Part 2: The 30000000th number is {}, vec RAM: {}M, vec time: {}", num, seen.len() * 8 / 1024/1024, (Instant::now() - t0).as_millis());
+    println!("Part 2: The 30000000th number is {}, vec RAM: {}M, vec time: {}ms", num, seen.len() * 8 / 1024/1024, (Instant::now() - t0).as_millis());
 }
