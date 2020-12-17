@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 use std::collections::HashSet;
+use std::collections::HashMap;
 
 use clap::{Arg, App};
 
@@ -179,7 +180,8 @@ impl ConwayLife4D {
         if self.map.contains(pt) { Active } else { Inactive }
     }
 
-    pub fn step(&mut self) -> bool {
+    // 230 ms
+    pub fn step1(&mut self) -> bool {
         let mut add = HashSet::new();
         let mut rm  = HashSet::new();
 
@@ -191,7 +193,7 @@ impl ConwayLife4D {
             for (dx,dy,dz,dw) in DIRECTIONS_4D.iter() {
                 if self.get(&(x+dx,y+dy,z+dz,w+dw)) == Active {
                     count += 1;
-                    if count > 3 { break; } // shortcut
+                    if count > 3 { break; } // shortcut (~35ms)
                 }
             }
             if self.map.contains(&(x,y,z,w)) {
@@ -209,6 +211,87 @@ impl ConwayLife4D {
             self.map.insert(pt);
         }
         return true;
+    }
+
+    // 150 ms
+    pub fn step2(&mut self) -> bool {
+        let mut add = HashSet::new();
+        let mut rm  = HashSet::new();
+
+        for &(x,y,z,w) in self.map.iter() {
+            let mut count = 0;
+            for (dx,dy,dz,dw) in DIRECTIONS_4D.iter() {
+                if self.get(&(x+dx,y+dy,z+dz,w+dw)) == Active {
+                    count += 1;
+                }
+                else if !add.contains(&(x+dx,y+dy,z+dz,w+dw)) && !rm.contains(&(x+dx,y+dy,z+dz,w+dw)) {
+                    let mut c = 0;
+                    for (ddx,ddy,ddz,ddw) in DIRECTIONS_4D.iter() {
+                        if self.map.contains(&(x+dx+ddx,y+dy+ddy,z+dz+ddz,w+dw+ddw)) {
+                            c += 1;
+                            if c > 3 { break; } // shortcut
+                        }
+                    }
+                    if 3 == c { add.insert((x+dx,y+dy,z+dz,w+dw)); }
+                    else { rm.insert((x+dx,y+dy,z+dz,w+dw)); }
+                }
+            }
+            if count != 2 && count != 3 { rm.insert((x,y,z,w)); }
+        }
+
+        if add.is_empty() && rm.is_empty() { return false; }
+
+        for pt in rm.drain()  { self.map.remove(&pt); }
+        for pt in add.drain() {
+            self.bbox.update(&pt);
+            self.map.insert(pt);
+        }
+        return true;
+    }
+
+    // 143 ms  -- NOTE: using "new" set with step1() algorithm is 350ms
+    pub fn step3(&mut self) {
+        let mut new = HashSet::new();
+        let mut seen = HashSet::new();
+
+        for &(x,y,z,w) in self.map.iter() {
+            let mut count = 0;
+            for (dx,dy,dz,dw) in DIRECTIONS_4D.iter() {
+                if self.get(&(x+dx,y+dy,z+dz,w+dw)) == Active {
+                    count += 1;
+                }
+                else if !new.contains(&(x+dx,y+dy,z+dz,w+dw)) && !seen.contains(&(x+dx,y+dy,z+dz,w+dw)) {
+                    let mut c = 0;
+                    for (ddx,ddy,ddz,ddw) in DIRECTIONS_4D.iter() {
+                        if self.map.contains(&(x+dx+ddx,y+dy+ddy,z+dz+ddz,w+dw+ddw)) {
+                            c += 1;
+                            if c > 3 { break; } // shortcut
+                        }
+                    }
+                    if 3 == c { new.insert((x+dx,y+dy,z+dz,w+dw)); }
+                    else { seen.insert((x+dx,y+dy,z+dz,w+dw)); }
+                }
+            }
+            if count == 2 || count == 3 { new.insert((x,y,z,w)); }
+        }
+
+        self.map = new;
+    }
+
+    // 27 ms
+    pub fn step(&mut self) {
+        let mut seen = HashMap::new();
+        for &(x,y,z,w) in self.map.iter() {
+            for (dx,dy,dz,dw) in DIRECTIONS_4D.iter() {
+                seen.entry((x+dx,y+dy,z+dz,w+dw)).and_modify(|e| { *e += 1 }).or_insert(1);
+            }
+        }
+
+        let mut new = HashSet::new();
+        for (pt, n) in seen.drain() {
+            if n == 3 || (n == 2 && self.map.contains(&pt)) { new.insert(pt); }
+        }
+        self.map = new;
     }
 
     #[inline]
