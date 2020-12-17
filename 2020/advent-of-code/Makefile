@@ -20,4 +20,5 @@ start:
 	echo '[[bin]]\nname="${DD}"\npath = "src/${DD}.rs"\n' >> Cargo.toml
 	touch ${DD}.in
 	emacsclient --no-wait src/${DD}.rs
-	FvwmCommand 'GotoPage 1 0' 'WindowId root 1 WarpToWindow 50 50'
+	moz-remote 'https://adventofcode.com/'
+	FvwmCommand 'GotoPage 1 1' 'WindowId root 1 WarpToWindow 50 50'

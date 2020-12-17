@@ -130,9 +130,9 @@ pub struct Ticket {
 impl std::convert::TryFrom<&str> for Ticket {
     type Error = String;
     fn try_from(src: &str) -> Result<Self, Self::Error> {
-        let mut fields = Vec::new();
-        for n in src.split(",") { fields.push(n.parse::<u16>().map_err(|e| e.to_string())?); }
-        Ok(Ticket { fields })
+        Ok(Ticket {
+            fields: src.split(",").map(|n| n.parse::<u16>().map_err(|e| e.to_string())).collect::<Result<Vec<u16>,String>>()?
+        })
     }
 }
 impl std::fmt::Display for Ticket {

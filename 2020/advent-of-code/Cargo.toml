@@ -8,6 +8,7 @@ clap = ">= 2"
 lazy_static = ">= 1"
 petgraph = ">= 0"
 regex = ">= 1"
+num-traits = ">= 0"
 
 # [profile.release]
 # lto = true
@@ -80,4 +81,8 @@ path = "src/15.rs"
 [[bin]]
 name="16"
 path = "src/16.rs"
+
+[[bin]]
+name="17"
+path = "src/17.rs"
 
