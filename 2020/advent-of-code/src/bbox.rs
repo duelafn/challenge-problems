@@ -2,6 +2,37 @@
 use num_traits::Num;
 
 #[derive(Copy, Clone)]
+pub struct BBox<T>(T,T,T,T);// xmin, xmax, ymin, ymax
+impl<T> BBox<T> where T: Num + std::cmp::PartialOrd + Copy {
+    pub fn new() -> BBox<T> {
+        BBox(T::zero(),T::zero(),T::zero(),T::zero())
+    }
+
+    #[inline]
+    pub fn xmin(&self) -> T { self.0 }
+    #[inline]
+    pub fn xmax(&self) -> T { self.1 }
+    #[inline]
+    pub fn ymin(&self) -> T { self.2 }
+    #[inline]
+    pub fn ymax(&self) -> T { self.3 }
+
+    #[inline]
+    pub fn update(&mut self, (x, y): &(T, T)) {
+        if *x < self.0 { self.0 = *x; }
+        else if *x > self.1 { self.1 = *x; }
+        if *y < self.2 { self.2 = *y; }
+        else if *y > self.3 { self.3 = *y; }
+    }
+}
+impl<T> std::fmt::Display for BBox<T> where T: std::fmt::Display + Num {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "BBox: {}, {}, {}, {}", self.0, self.1, self.2, self.3)
+    }
+}
+
+
+#[derive(Copy, Clone)]
 pub struct BBox3D<T>(T,T,T,T,T,T);// xmin, xmax, ymin, ymax, zmin, zmax
 impl<T> BBox3D<T> where T: Num + std::cmp::PartialOrd + Copy {
     pub fn new() -> BBox3D<T> {
