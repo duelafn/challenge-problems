@@ -346,5 +346,7 @@ fn main() {
     }
 
     println!("BAH! Plan B");
-    std::process::Command::new("/usr/bin/perl").arg("19.pl").arg(fname).status();
+    #[allow(unused_must_use)] {
+        std::process::Command::new("/usr/bin/perl").arg("19.pl").arg(fname).status();
+    }
 }
