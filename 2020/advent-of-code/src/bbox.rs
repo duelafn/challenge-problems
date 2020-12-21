@@ -7,6 +7,14 @@ impl<T> BBox<T> where T: Num + std::cmp::PartialOrd + Copy {
     pub fn new() -> BBox<T> {
         BBox(T::zero(),T::zero(),T::zero(),T::zero())
     }
+    pub fn new_from(&(x, y): &(T, T)) -> BBox<T> {
+        BBox(x, x, y, y)
+    }
+
+    pub fn set(&mut self, &(x, y): &(T, T)) {
+        self.0 = x; self.1 = x;
+        self.2 = y; self.3 = y;
+    }
 
     #[inline]
     pub fn xmin(&self) -> T { self.0 }
@@ -16,6 +24,16 @@ impl<T> BBox<T> where T: Num + std::cmp::PartialOrd + Copy {
     pub fn ymin(&self) -> T { self.2 }
     #[inline]
     pub fn ymax(&self) -> T { self.3 }
+
+    #[inline]
+    pub fn height(&self) -> T { self.3 - self.2 + T::one() }
+    #[inline]
+    pub fn width(&self) -> T { self.1 - self.0 + T::one() }
+
+    #[inline]
+    pub fn xrange(&self) -> std::ops::RangeInclusive<T> { std::ops::RangeInclusive::new(self.0, self.1) }
+    #[inline]
+    pub fn yrange(&self) -> std::ops::RangeInclusive<T> { std::ops::RangeInclusive::new(self.2, self.3) }
 
     #[inline]
     pub fn update(&mut self, (x, y): &(T, T)) {

@@ -89,6 +89,19 @@ impl StrParser {
     pub fn is_char_next(&self, ch: char) -> bool { self.i < self.s.len() && ch == self.s[self.i] }
 
     #[inline]
+    pub fn expect_str(&mut self, s: &str) -> Result<(), String> {
+        let mut next = self.i;
+        for ch in s.chars() {
+            if next >= self.s.len() { return Err(self.err(&format!("unexpected end of string looking for '{}'", s))); }
+            if ch != self.s[next]   { return Err(self.err(&format!("expected '{}'", s))); }
+            next += 1;
+        }
+        self.i = next;
+        if self.skip_ws { self.skip_ws(); }
+        return Ok(());
+    }
+
+    #[inline]
     pub fn expect_char(&mut self, ch: char) -> Result<usize, String> {
         let mut next = self.i;
         while next < self.s.len() && ch == self.s[next] {
