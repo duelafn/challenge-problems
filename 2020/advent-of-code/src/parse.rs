@@ -3,14 +3,11 @@
 pub struct StrParser {
     s: Vec<char>,
     i: usize,
-    skip_ws: bool,
+    pub skip_ws: bool,
 }
 
 impl StrParser {
     pub fn new(src: &str) -> StrParser {
-        StrParser { s: src.chars().collect(), i: 0, skip_ws: false }
-    }
-    pub fn new_skip_ws(src: &str) -> StrParser {
         StrParser { s: src.chars().collect(), i: 0, skip_ws: true }
     }
 

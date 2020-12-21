@@ -278,7 +278,7 @@ fn records(fname: &str) -> Result<(Ruleset, Vec<String>), String> {
 
         // Just collect rules for now, can't build proper tree due to order issues
         if line.chars().next().map(|a| a.is_ascii_digit()).unwrap_or(false) {
-            let mut p = StrParser::new_skip_ws(line);
+            let mut p = StrParser::new(line);
             let idx = p.extract_u64()? as usize;
             p.expect_char(':')?;
 

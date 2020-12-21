@@ -20,7 +20,7 @@ pub struct Tile {
 impl Tile {
     pub fn new(src: &str) -> Tile {
         let mut iter = src.lines();
-        let mut parser = StrParser::new_skip_ws(iter.next().unwrap_or_else(|| panic!("Missing id line")));
+        let mut parser = StrParser::new(iter.next().unwrap_or_else(|| panic!("Missing id line")));
         parser.expect_str("Tile").unwrap_or_else(|e| panic!("Missing Tile label: {}", e.to_string()));
         let id = parser.extract_u64().unwrap_or_else(|e| panic!("Can't find id: {}", e.to_string())) as u16;
         let img :Vec<String> = iter.map(|x| x.to_string()).collect();
