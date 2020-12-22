@@ -82,9 +82,15 @@ impl Game {
         if c1 <= self.p1.len() && c2 <= self.p2.len() {
             let mut rec = Game::new();
             rec.level = self.level + 1;
-            for i in 0..c1 { rec.p1.push_back(self.p1[i]); }
-            for i in 0..c2 { rec.p2.push_back(self.p2[i]); }
-            winner = rec.play2();
+            // Largest card determines winner except for the repeat rule
+            // which favors player 1. Thus, if player 1 also has the
+            // largest card, we know they win, and since the score of the
+            // subgame is irrelevant, we don't have to actually play it out.
+            let mut max = 0;
+            for i in 0..c1 { if self.p1[i] > max { max = self.p1[i]; }; rec.p1.push_back(self.p1[i]); }
+            for i in 0..c2 { if self.p2[i] > max { max = 0; };          rec.p2.push_back(self.p2[i]); }
+            if max > 0 { winner = 1; }
+            else { winner = rec.play2(); }
         } else {
             winner = if c1 > c2 { 1 } else { 2 };
         }
