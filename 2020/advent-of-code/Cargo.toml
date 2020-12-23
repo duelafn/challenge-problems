@@ -12,6 +12,7 @@ num-traits = ">= 0"
 
 # [profile.release]
 # lto = true
+# opt-level = 3
 # overflow-checks = true
 
 [lib]
@@ -105,4 +106,8 @@ path = "src/21.rs"
 [[bin]]
 name="22"
 path = "src/22.rs"
+
+[[bin]]
+name="23"
+path = "src/23.rs"
 
