@@ -14,6 +14,21 @@ pub fn print_map<D: Display>(map: &Vec<Vec<D>>) {
 }
 
 
+pub fn neighbors4<D>(map: &Vec<Vec<D>>, x: usize, y: usize) -> impl Iterator<Item=(usize, usize, &D)> {
+    let mut rv = Vec::new();
+    for step in Dir4::iter() {
+        if let Some((a, b)) = step.step_usize(x, y) {
+            if let Some(row) = map.get(b) {
+                if let Some(val) = row.get(a) {
+                    rv.push((a, b, val));
+                }
+            }
+        }
+    }
+    rv.into_iter()
+}
+
+
 /// Four cardinal directions.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum Dir4 { N, E, S, W }
