@@ -5,3 +5,4 @@ edition = "2018"
 
 [dependencies]
 petgraph             = { version = "= 0.4.13" }
+# rustc-hash           = { version = "= 1.1.0" }
