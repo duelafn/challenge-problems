@@ -1,5 +1,5 @@
 
 /target
 /*.in
-/*.test
+/*.test*
 /Cargo.lock
