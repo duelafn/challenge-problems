@@ -5,7 +5,7 @@ all:
 	cargo build --release
 
 run:
-	cargo run --bin ${DD}
+	cargo run --release --bin ${DD}
 
 test:
 	cargo test
