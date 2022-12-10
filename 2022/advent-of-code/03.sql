@@ -1,4 +1,6 @@
 
+--  sqlite3 <03.sql
+
 CREATE TABLE rucksacks (contents TEXT);
 .import --csv '03.in' rucksacks
 
@@ -40,5 +42,4 @@ SELECT SUM(CASE WHEN unicode(item) > 96 THEN unicode(item)-96 ELSE unicode(item)
          )
     GROUP BY grp, item
     HAVING SUM(fnd) >= 9
-)
-;
+);
