@@ -1,0 +1,15 @@
+[package]
+name = "aoc"
+version = "1.0.0"
+edition = "2024"
+rust-version = "1.88"
+
+[lib]
+name = "aoc"
+path = "src/lib.rs"
+
+[profile.release]
+codegen-units = 1
+lto = true
+
+[dependencies]
