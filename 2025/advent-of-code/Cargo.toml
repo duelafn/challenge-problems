@@ -13,3 +13,4 @@ codegen-units = 1
 lto = true
 
 [dependencies]
+rayon                    = { version = "1.11.0", default-features = false }
