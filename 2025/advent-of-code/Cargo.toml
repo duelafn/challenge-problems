@@ -14,3 +14,4 @@ lto = true
 
 [dependencies]
 rayon                    = { version = "1.11.0", default-features = false }
+smallvec                 = { version = "1.10.0", default-features = false, features = ["union"] }
